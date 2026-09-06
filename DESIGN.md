@@ -133,6 +133,11 @@ left alone.
 Live review list. When one is resolved, strike it through with what happened
 rather than deleting it.
 
+Most of these are also filed as
+[issues](https://github.com/khalilsg/voter-demographic-predictor/issues), which
+carry the reproduction steps and the acceptance criteria. This table is the
+record of *why* each call was made; the issues are the work.
+
 | Call | Why | What to look at later |
 |---|---|---|
 | ~~No uncertainty shown~~ **Resolved.** The fit now emits the coefficient covariance and the app shows a 95% interval on the dial and a band on the cycle line. Standard errors alone would have been wrong: what is displayed is a contrast (coefficient minus feature mean), so the terms are correlated by construction and c'Vc is the correct variance. The interval excludes the intercept, which after calibration carries an election result rather than an estimate | | |
