@@ -155,3 +155,21 @@ fieldset.partial { border-color: color-mix(in oklab, var(--warn-line) 55%, var(-
 .big.muted { color: var(--neutral); }
 .tick.muted { fill: var(--neutral); font-style: italic; }
 .pt.excluded { pointer-events: none; }
+
+/* Known measurement problems, as distinct from availability gaps */
+.caveat {
+  font-size: 12px;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--warn-line);
+  padding: 2px 0 2px 8px;
+  margin: 0 0 8px;
+}
+.caveat.detail {
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--warn-bg);
+  border-radius: 0 5px 5px 0;
+  padding: 8px 10px;
+  margin: 20px 0 0;
+}
+.caveat.detail strong { color: var(--ink); }

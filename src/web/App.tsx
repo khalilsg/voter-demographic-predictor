@@ -10,6 +10,7 @@ import {
 import type { Answers } from '../engine/types.js';
 import { CycleChart } from './components/CycleChart.js';
 import { Waterfall } from './components/Waterfall.js';
+import { CAVEATS, caveatFor } from './caveats.js';
 import { leanColor, leanLabel, pct } from './format.js';
 
 const LATEST = Math.max(...MODELS.map((m) => m.year));
@@ -83,6 +84,9 @@ export function App() {
                       )} out of the comparison.`}
                 </p>
               )}
+              {caveatFor(f.id) && (
+                <p className="caveat">{caveatFor(f.id)!.short}</p>
+              )}
               <p className="q">{f.question}</p>
               <div className="opts">
                 {f.levels.map((l) => (
@@ -146,6 +150,19 @@ export function App() {
               </>
             )}
           </p>
+
+          {Object.entries(CAVEATS)
+            .filter(([id]) => answers[id])
+            .map(([id, c]) => (
+              <p key={id} className="caveat detail">
+                <strong>
+                  About your{' '}
+                  {QUESTIONS.find((q) => q.id === id)?.label.toLowerCase()}{' '}
+                  answer:
+                </strong>{' '}
+                {c.detail}
+              </p>
+            ))}
 
           <h2>
             You, across {shown.length} election{shown.length === 1 ? '' : 's'}
