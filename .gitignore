@@ -32,3 +32,6 @@ data/raw/
 *.7z
 *.parquet
 *.feather
+
+.venv/
+__pycache__/

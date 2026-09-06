@@ -107,8 +107,9 @@ data, not a modeling choice, and the UI should not pretend otherwise.
 
 ```bash
 # Download the cumulative file (~1 GB) to data/raw/ — gitignored.
-Rscript scripts/fit_models.R data/raw/cumulative_ces.dta
-npm test    # asserts share sums, reference levels, cross-cycle spec identity
+python3 scripts/fit_models.py data/raw/cumulative_ces.dta   # or fit_models.R
+npm test     # share sums, reference levels, cross-cycle spec identity
+npm run check  # the fit against reference points whose real values are known
 ```
 
 See [SETUP.md](SETUP.md) for step-by-step instructions.

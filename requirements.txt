@@ -1,0 +1,9 @@
+# Offline model fitting only — the app itself has no Python dependency.
+#   python3 -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+pandas>=2.0
+numpy>=1.24
+statsmodels>=0.14
+# Optional but recommended: faster, and handles Stata value-label tables that
+# make pandas' own reader raise on duplicate labels.
+pyreadstat>=1.2

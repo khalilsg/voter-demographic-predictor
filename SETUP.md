@@ -11,33 +11,60 @@ the four harmonization traps the script handles.
 
 ## 1. Prerequisites
 
-**R 4.1 or newer.**
+You need **either Python or R** — the fit script exists in both, producing
+identical output. Python is the lower-friction path and what the rest of this
+guide assumes.
+
+### Python (recommended)
 
 ```bash
-R --version          # macOS: brew install r  ·  Ubuntu: sudo apt install r-base
+python3 --version          # 3.9 or newer
 ```
 
-**R packages** (a few minutes to compile):
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### R (alternative)
+
+Only if you would rather use R. `Rscript` is not installed by default on macOS
+or most Linux distributions — if you got `command not found: Rscript`, that is
+why.
 
 ```bash
+brew install r                                    # macOS
+sudo apt install r-base                           # Debian/Ubuntu
 Rscript -e 'install.packages(c("haven","dplyr","tidyr","jsonlite"), repos="https://cloud.r-project.org")'
 ```
 
-Verify they all load before going further — it is annoying to discover a
-missing package after the download:
-
-```bash
-Rscript -e 'library(haven); library(dplyr); library(tidyr); library(jsonlite); cat("ok\n")'
-```
+Substitute `Rscript scripts/fit_models.R` for `python3 scripts/fit_models.py`
+throughout; everything else is the same.
 
 **The repo:**
 
 ```bash
 git clone https://github.com/khalilsg/voter-demographic-predictor.git
 cd voter-demographic-predictor
-git checkout claude/election-exit-poll-predictor-aeot4e
 npm install
 ```
+
+### Check the toolchain before downloading a gigabyte
+
+This runs the entire pipeline on a small synthetic file, so you find out now
+rather than after the download:
+
+```bash
+python3 scripts/make-test-dta.py /tmp/test_ces.dta
+python3 scripts/fit_models.py /tmp/test_ces.dta
+npm test
+```
+
+Tests should pass. `npm run check` will report the numbers as implausible —
+that is correct, the synthetic file is noise. What you are confirming is that
+the script runs end to end and writes model files the engine accepts. Restore
+the placeholders afterwards with `npm run fixture`.
 
 ## 2. Download the data
 
@@ -77,7 +104,7 @@ people.
 ## 3. Fit
 
 ```bash
-Rscript scripts/fit_models.R data/raw/cumulative_2006-2024.dta
+python3 scripts/fit_models.py data/raw/cumulative_2006-2024.dta
 ```
 
 Expect five or ten minutes, mostly reading the file. You should see:
@@ -161,8 +188,14 @@ and re-read step 2.
 
 ## If it breaks
 
-**`could not find function "read_dta"`** — `haven` did not install. Rerun the
-install command and watch for a compiler error.
+**`command not found: Rscript`** — R is not installed. Use the Python script
+instead; it does the same thing.
+
+**`ModuleNotFoundError: No module named 'pandas'`** — the virtualenv is not
+active. Re-run `source .venv/bin/activate`.
+
+**`could not read value labels`** — install `pyreadstat`, which handles Stata
+files whose label tables make the pandas reader raise.
 
 **`Error: cannot allocate vector of size ...`** — the file does not fit in RAM.
 Read it in chunks or use a machine with more memory; the full file wants
@@ -172,10 +205,10 @@ roughly 8 GB free.
 match the data's value labels. Print what is actually there:
 
 ```bash
-Rscript -e 'library(haven); d <- read_dta("data/raw/cumulative_2006-2024.dta", n_max = 5000); print(table(as_factor(d$educ))); print(table(as_factor(d$race_h)))'
+python3 -c "import pandas as pd; d = pd.read_stata('data/raw/cumulative_2006-2024.dta', columns=['educ','race_h'], convert_categoricals=True); print(d.educ.value_counts()); print(d.race_h.value_counts())"
 ```
 
-Then adjust the `recode()` calls in `scripts/fit_models.R` to match. The label
+Then adjust the mappings in `scripts/fit_models.py` (and `fit_models.R`, if you use it) to match. The label
 text is the most likely thing to have drifted since the script was written.
 
 **A cycle reports `n=0`** — that year is missing `voted_pres_party`, or every

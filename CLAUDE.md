@@ -59,6 +59,41 @@ points. Every test passed. Only a screenshot showed it.
 
 ---
 
+## Two fit scripts, kept in step
+
+`scripts/fit_models.py` and `scripts/fit_models.R` do the same job — same
+features, same reference levels, same recodes, same output schema — so nobody
+has to install R. **Change one, change the other**, or the repo quietly grows
+two different models.
+
+`scripts/make-test-dta.py` writes a small synthetic CES-shaped file so the
+whole pipeline can be exercised in seconds without the gigabyte download. Use
+it before touching either fit script. The value-label strings in it are the
+real ones; if a recode stops matching them, the fit yields nothing rather than
+failing loudly.
+
+---
+
+## Tests must not encode fixture properties
+
+Two tests originally asserted things that were true only of the placeholder
+fixture: that every feature's shares sum to 1 within 5e-7 (real shares are
+stored at 4dp, so they drift by up to k·5e-5), and that each cycle's electorate
+mean reproduces the national result to four decimals (the fixture solves its
+intercepts to do that; a real fit never will, because the survey sample is not
+the electorate).
+
+Both passed for months of fixture use and would have failed the instant a real
+fit landed — making a correct fit look broken at the worst moment. Found only
+by running the Python port against synthetic data end to end.
+
+The rule: `npm test` asserts properties of the *engine and the file format*.
+Claims about the *world* — plausible vote shares, expected realignment — belong
+in `npm run check`, where they surface as warnings with a likely cause. Gate
+anything fixture-specific on `meta.synthetic`.
+
+---
+
 ## Running and verifying
 
 ```bash
