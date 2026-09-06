@@ -30,11 +30,42 @@ export interface Feature {
   levels: Level[];
 }
 
+/**
+ * Covariance of the fitted coefficients, in the order given by `terms`
+ * ("feature.level"). Reference levels are absent — treatment coding fixes them
+ * at zero with no variance — and so is the intercept, which after calibration
+ * carries an election result rather than an estimate.
+ */
+export interface Covariance {
+  terms: string[];
+  values: number[][];
+}
+
+/**
+ * An observed vote share for a named group, computed from the data with no
+ * model involved — the marginal a published crosstab reports. Shown beside a
+ * prediction so a reader has one unmodelled number to hold it against.
+ */
+export interface ReferenceGroup {
+  id: string;
+  label: string;
+  /** Every entry must be satisfied for a profile to belong to the group. */
+  criteria: Record<string, string[]>;
+  /** Two-party Democratic share within the group, weighted. */
+  dem: number;
+  /** Unweighted respondents in the group that cycle. */
+  n: number;
+}
+
 export interface CycleModel {
   year: number;
   /** Log-odds intercept: the reference-level respondent. */
   intercept: number;
   features: Feature[];
+  /** Absent on models fitted before uncertainty was added; the UI degrades. */
+  covariance?: Covariance;
+  /** Absent on older models; the "you most resemble" line is then hidden. */
+  reference_groups?: ReferenceGroup[];
   meta: {
     /** Unweighted respondents the cycle was fitted on. */
     n: number;
@@ -82,6 +113,13 @@ export interface Prediction {
   /** Log-odds of the cycle's average voter — where you sit if you answer nothing. */
   baselineLogit: number;
   contributions: Contribution[];
+  /**
+   * Standard error of `logitP`, or undefined when the model carries no
+   * covariance. Covers sampling error in the demographic terms only.
+   */
+  se?: number;
+  /** 95% interval on `p`, present whenever `se` is. */
+  interval?: [number, number];
   /** Questions left unanswered, averaged over rather than guessed. */
   unanswered: string[];
   /**

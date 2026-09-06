@@ -238,3 +238,15 @@ fieldset.partial { border-color: color-mix(in oklab, var(--warn-line) 55%, var(-
   font-size: 13px; line-height: 1.5; color: var(--ink-soft);
   border-left: 2px solid var(--dem); padding: 2px 0 2px 9px; margin: 9px 0 0;
 }
+
+.reset.share { margin-left: 14px; }
+
+.ci { color: var(--ink-soft); font-size: 12px; margin-top: 6px; }
+.ci-warn { color: var(--gop); }
+
+.resemble {
+  font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+  border-left: 2px solid var(--neutral); padding: 2px 0 2px 9px; margin: 18px 0 0;
+}
+.resemble strong { color: var(--ink); }
+.resemble .dim { opacity: 0.75; }

@@ -38,13 +38,19 @@ TWO_PARTY_DEM = {
 }
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "models"
+TARGETS_FILE = (
+    Path(__file__).resolve().parent.parent / "data" / "reference" / "turnout_targets.json"
+)
+URBANICITY_FILE = (
+    Path(__file__).resolve().parent.parent / "data" / "reference" / "county_urbanicity.json"
+)
 
 # Columns pulled from the file. Reading only these keeps a ~1 GB Stata file
 # inside a few hundred MB of RAM.
 COLUMNS = [
     "year", "case_id", "weight", "weight_post", "voted_pres_party", "vv_turnout_gvm",
     "gender", "birthyr", "race_h", "educ", "faminc", "marstat", "religion",
-    "relig_bornagain", "union_hh", "st",
+    "relig_bornagain", "union_hh", "st", "county_fips",
 ]
 
 FEATURES: dict[str, list[str]] = {
@@ -58,6 +64,7 @@ FEATURES: dict[str, list[str]] = {
     "bornagain": ["no", "yes"],
     "union_hh":  ["never", "former", "current"],
     "region":    ["northeast", "midwest", "south", "west"],
+    "urbanicity": ["large_metro", "small_metro", "nonmetro"],
 }
 
 # Reference level per feature. Must match the level the engine expects to have
@@ -66,6 +73,7 @@ REFERENCE = {
     "gender": "man", "age": "45_64", "race": "white", "educ": "hs",
     "income": "middle", "marstat": "married", "religion": "protestant",
     "bornagain": "no", "union_hh": "never", "region": "midwest",
+    "urbanicity": "small_metro",
 }
 
 FEATURE_LABELS = {
@@ -73,7 +81,7 @@ FEATURE_LABELS = {
     "educ": "Education", "income": "Household income",
     "marstat": "Marital status", "religion": "Religion",
     "bornagain": "Born-again or evangelical", "union_hh": "Union household",
-    "region": "Region",
+    "region": "Region", "urbanicity": "Where you live",
 }
 
 QUESTIONS = {
@@ -87,6 +95,7 @@ QUESTIONS = {
     "bornagain": "Would you describe yourself as a born-again or evangelical Christian?",
     "union_hh": "Have you or anyone in your household ever belonged to a union?",
     "region": "Where do you live?",
+    "urbanicity": "What kind of place do you live in?",
 }
 
 LABELS = {
@@ -108,6 +117,9 @@ LABELS = {
                  "current": "In a union now"},
     "region": {"northeast": "Northeast", "midwest": "Midwest", "south": "South",
                "west": "West"},
+    "urbanicity": {"large_metro": "Large metro area",
+                   "small_metro": "Smaller metro area",
+                   "nonmetro": "Rural or small town"},
 }
 
 NAME_TO_ABBR = {
@@ -303,6 +315,16 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     st = s(df["st"])
     # The file codes state as an abbreviation, but some readers surface the
     # full name; accept either rather than silently producing an empty region.
+    # Urbanicity from county, via USDA Rural-Urban Continuum Codes. This is
+    # metro SIZE rather than city-versus-suburb — a large metro county holds
+    # both — because county is the finest geography the CES carries for every
+    # respondent. The level names say so rather than implying more.
+    urb = json.loads(URBANICITY_FILE.read_text())
+    code_to_band = {int(k): v for k, v in urb["_codes"].items()}
+    county_band = {f: code_to_band[c] for f, c in urb["counties"].items()}
+    fips = s(df["county_fips"]).str.extract(r"(\d+)", expand=False).str.zfill(5)
+    df["urbanicity"] = fips.map(county_band).astype("string")
+
     df["region"] = (st.str.upper().map(CENSUS_REGION)
                     .fillna(st.str.title().map(CENSUS_REGION_BY_NAME)).astype("string"))
 
@@ -329,6 +351,52 @@ MIN_COVERAGE = 0.01
 from it. Not a tuning knob: a question the cycle never asked sits at exactly
 zero, and one that was asked sits far above 1%. The threshold only absorbs the
 handful of stray values a merge artifact can leave behind."""
+
+
+def rake_to_targets(d: pd.DataFrame, targets: dict[str, dict[str, float]]) -> pd.DataFrame:
+    """Reweight one cycle so its within-group vote shares match known margins.
+
+    Section 6 calibrates the national level to the election result, which is a
+    census. This is the same idea applied one level down: where an independent
+    measurement says how a GROUP voted, the sample is reweighted to agree with
+    it, and every coefficient then reflects that correction rather than one
+    term being nudged by hand.
+
+    It exists because the intercept shift cannot reach the under-30 problem.
+    That error is in the vote rate within the group, not in the group's size,
+    so no amount of reweighting the age composition touches it.
+
+    Within each level, Democratic and Republican voters are rescaled by a
+    constant so the weighted share hits the target while the level's total
+    weight is unchanged — which leaves the age composition alone and moves
+    only the split inside it. Applied margin by margin; with one margin per
+    feature it converges immediately, so no iteration is needed yet.
+
+    A cycle with no targets is returned untouched. That is the current state
+    for every cycle: data/reference/turnout_targets.json ships empty on
+    purpose, because filling it requires exit-poll crosstabs and a guessed
+    target would be a prior wearing a data costume.
+    """
+    d = d.copy()
+    for feature, levels in targets.items():
+        if feature not in d.columns:
+            continue
+        for level, target in levels.items():
+            m = (d[feature] == level).to_numpy()
+            if not m.any():
+                continue
+            w = d.loc[m, "fitweight"].to_numpy(dtype=float)
+            y = d.loc[m, "y"].to_numpy(dtype=float)
+            wd, wr = float((w * y).sum()), float((w * (1 - y)).sum())
+            if wd <= 0 or wr <= 0:
+                continue
+            total = wd + wr
+            # Solve for the scale factors that hit the target and preserve the
+            # level's total weight.
+            new_d, new_r = total * target, total * (1 - target)
+            scale = np.where(y == 1, new_d / wd, new_r / wr)
+            d.loc[m, "fitweight"] = w * scale
+    return d
 
 
 def availability(df: pd.DataFrame) -> dict[int, list[str]]:
@@ -361,7 +429,12 @@ def report_availability(avail: dict[int, list[str]]) -> None:
     print("  from the comparison when that question is answered.\n")
 
 
-def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
+def fit_cycle(
+    df: pd.DataFrame,
+    year: int,
+    features: list[str],
+    targets: dict[str, dict[str, float]] | None = None,
+) -> dict:
     pool = df[(df["year"] == year) & df["y"].notna()]
     d = pool.dropna(subset=features).copy()
     if d.empty:
@@ -373,6 +446,9 @@ def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
                 lines.append(f"    {f:<12}{pool[f].isna().mean():>7.1%}")
         lines += ["", "  Run:  python3 scripts/inspect-labels.py <your file>"]
         raise SystemExit("\n".join(lines))
+
+    if targets:
+        d = rake_to_targets(d, targets)
 
     for f in features:
         d[f] = pd.Categorical(d[f], categories=FEATURES[f])
@@ -405,10 +481,39 @@ def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
             "id": f, "label": FEATURE_LABELS[f], "question": QUESTIONS[f], "levels": lv,
         })
 
+    # Covariance of the fitted coefficients, excluding the intercept.
+    #
+    # Standard errors alone would not be enough. What the app displays is a
+    # CONTRAST — each answer's coefficient minus its feature's share-weighted
+    # mean — so the terms it combines are correlated with each other by
+    # construction, and adding their variances would be wrong. With the full
+    # matrix the app can evaluate c'Vc for the contrast it actually shows.
+    #
+    # The intercept is excluded deliberately: after calibration it carries the
+    # election result, which is a census rather than an estimate, so the band
+    # covers uncertainty in how groups differ and not in the national level.
+    cov = model.cov_params()
+    terms: list[str] = []
+    keys: list[str] = []
+    for f in features:
+        for level in FEATURES[f]:
+            if level == REFERENCE[f]:
+                continue  # fixed at 0 by treatment coding; no variance
+            key = f'C({f}, Treatment(reference="{REFERENCE[f]}"))[T.{level}]'
+            if key in cov.index:
+                terms.append(f"{f}.{level}")
+                keys.append(key)
+    sub = cov.loc[keys, keys].to_numpy(dtype=float)
+
     return {
         "year": year,
         "intercept": round(float(co["Intercept"]), 4),
         "features": out_features,
+        "reference_groups": reference_groups(d, features),
+        "covariance": {
+            "terms": terms,
+            "values": [[round(float(x), 8) for x in row] for row in sub],
+        },
         "meta": {
             "n": int(len(d)),
             "source": "CES Cumulative Common Content (doi:10.7910/DVN/II2DB6), "
@@ -452,6 +557,55 @@ def observed_groups(d: pd.DataFrame) -> dict[str, tuple[float, int]]:
         "Women": share(d["gender"].to_numpy() == "woman"),
         "Under 30": share(d["age"].to_numpy() == "18_29"),
     }
+
+
+REFERENCE_GROUPS: list[tuple[str, str, dict[str, list[str]]]] = [
+    ("black", "Black voters", {"race": ["black"]}),
+    ("hispanic", "Hispanic voters", {"race": ["hispanic"]}),
+    ("white_degree", "White voters with a college degree",
+     {"race": ["white"], "educ": ["four_year", "postgrad"]}),
+    ("white_nodegree", "White voters without a college degree",
+     {"race": ["white"], "educ": ["no_hs", "hs", "some_college", "two_year"]}),
+    ("white_evangelical", "White evangelicals",
+     {"race": ["white"], "bornagain": ["yes"]}),
+    ("under30", "Voters under 30", {"age": ["18_29"]}),
+    ("over65", "Voters 65 and over", {"age": ["65_up"]}),
+    ("women", "Women", {"gender": ["woman"]}),
+    ("men", "Men", {"gender": ["man"]}),
+    ("union", "Union households", {"union_hh": ["current", "former"]}),
+    ("nonmetro", "Rural and small-town voters", {"urbanicity": ["nonmetro"]}),
+    ("large_metro", "Large-metro voters", {"urbanicity": ["large_metro"]}),
+]
+
+
+def reference_groups(d: pd.DataFrame, features: list[str]) -> list[dict]:
+    """Observed vote share for named groups, straight from the data.
+
+    This is the marginal a published crosstab reports — an average over the
+    group as it actually is — and it is deliberately NOT the model's output.
+    The app shows it beside a prediction so a reader has one unmodelled number
+    to hold it against, which is the check the coefficients cannot provide for
+    themselves.
+    """
+    out = []
+    for gid, label, criteria in REFERENCE_GROUPS:
+        if any(f not in features for f in criteria):
+            continue  # a cycle that never asked one of the defining questions
+        m = np.ones(len(d), dtype=bool)
+        for f, levels in criteria.items():
+            m &= d[f].isin(levels).to_numpy()
+        if m.sum() < 200:
+            continue  # too thin to quote
+        w = d.loc[m, "fitweight"].to_numpy(dtype=float)
+        y = d.loc[m, "y"].to_numpy(dtype=float)
+        out.append({
+            "id": gid,
+            "label": label,
+            "criteria": criteria,
+            "dem": round(float((y * w).sum() / w.sum()), 4),
+            "n": int(m.sum()),
+        })
+    return out
 
 
 def calibrate(model: dict) -> dict:
@@ -499,6 +653,12 @@ def main() -> None:
 
     print(f"reading {src}")
     df = prepare(read_source(src))
+    all_targets = json.loads(TARGETS_FILE.read_text()).get("targets", {})
+    if all_targets:
+        print(f"  raking to known margins for: {', '.join(sorted(all_targets))}")
+    else:
+        print("  no turnout targets set; skipping raking "
+              f"(see {TARGETS_FILE.name})")
     avail = availability(df)
     report_availability(avail)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -507,7 +667,7 @@ def main() -> None:
     for year in CYCLES:
         d = df[(df["year"] == year) & df["y"].notna()].dropna(subset=avail[year])
         observed[year] = observed_groups(d)
-        model = fit_cycle(df, year, avail[year])
+        model = fit_cycle(df, year, avail[year], all_targets.get(str(year)))
         if do_calibrate:
             model = calibrate(model)
         path = OUT_DIR / f"{year}.json"

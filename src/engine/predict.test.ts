@@ -6,6 +6,7 @@ import {
   comparable,
   invLogit,
   logit,
+  nearestGroup,
   predict,
   predictAcrossCycles,
   questions,
@@ -256,6 +257,82 @@ describe('biggestFlips', () => {
       const actual = predict(m, { ...answers, [f.featureId]: undefined }).p;
       expect(Number.isFinite(actual)).toBe(true);
       expect(f.p - current).toBeCloseTo(f.delta, 12);
+    }
+  });
+});
+
+describe('uncertainty', () => {
+  const withCov = MODELS.filter((m) => m.covariance);
+
+  it('is absent, not wrong, when the model carries no covariance', () => {
+    for (const m of MODELS.filter((x) => !x.covariance)) {
+      const r = predict(m, { gender: 'woman' });
+      expect(r.se).toBeUndefined();
+      expect(r.interval).toBeUndefined();
+    }
+  });
+
+  it.skipIf(withCov.length === 0)('brackets the point estimate', () => {
+    for (const m of withCov) {
+      for (const answers of everyAnswer(m)) {
+        const r = predict(m, answers);
+        const [lo, hi] = r.interval!;
+        expect(lo).toBeLessThanOrEqual(r.p);
+        expect(hi).toBeGreaterThanOrEqual(r.p);
+        expect(lo).toBeGreaterThan(0);
+        expect(hi).toBeLessThan(1);
+      }
+    }
+  });
+
+  it.skipIf(withCov.length === 0)('is zero width when nothing is answered', () => {
+    // No demographic terms are in play, and the baseline is a known margin.
+    for (const m of withCov) expect(predict(m, {}).se).toBeCloseTo(0, 10);
+  });
+
+  it.skipIf(withCov.length === 0)('widens as more questions are answered', () => {
+    for (const m of withCov) {
+      const one = predict(m, { race: 'black' }).se!;
+      const many = predict(m, {
+        race: 'black', educ: 'postgrad', religion: 'jewish', region: 'northeast',
+      }).se!;
+      expect(many).toBeGreaterThan(one);
+    }
+  });
+});
+
+describe('nearestGroup', () => {
+  const withGroups = MODELS.filter((m) => m.reference_groups?.length);
+
+  it('is undefined when the model carries no reference groups', () => {
+    for (const m of MODELS.filter((x) => !x.reference_groups?.length)) {
+      expect(nearestGroup(m, { race: 'black' })).toBeUndefined();
+    }
+  });
+
+  it.skipIf(withGroups.length === 0)('matches nothing when nothing is answered', () => {
+    for (const m of withGroups) expect(nearestGroup(m, {})).toBeUndefined();
+  });
+
+  it.skipIf(withGroups.length === 0)('only returns groups the answers fully satisfy', () => {
+    for (const m of withGroups) {
+      for (const answers of everyAnswer(m)) {
+        const g = nearestGroup(m, answers);
+        if (!g) continue;
+        for (const [featureId, levels] of Object.entries(g.criteria)) {
+          expect(levels).toContain(answers[featureId]);
+        }
+      }
+    }
+  });
+
+  it.skipIf(withGroups.length === 0)('prefers the more specific group', () => {
+    for (const m of withGroups) {
+      // "White voters without a college degree" (2 criteria) should beat any
+      // single-criterion group the same answers also satisfy.
+      const g = nearestGroup(m, { race: 'white', educ: 'hs', gender: 'woman' });
+      if (!g) continue;
+      expect(Object.keys(g.criteria).length).toBeGreaterThan(1);
     }
   });
 });

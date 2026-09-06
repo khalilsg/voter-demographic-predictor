@@ -3,6 +3,7 @@ import { MODELS, anySynthetic, modelFor } from '../engine/models.js';
 import {
   biggestFlips,
   comparable,
+  nearestGroup,
   predict,
   predictAcrossCycles,
   questions,
@@ -14,6 +15,7 @@ import { Methodology } from './components/Methodology.js';
 import { Waterfall } from './components/Waterfall.js';
 import { CAVEATS, caveatFor } from './caveats.js';
 import { PRESETS } from './presets.js';
+import { PROFILE_PREFIX, decodeAnswers, profileUrl } from './share.js';
 import { leanColor, leanLabel, pct } from './format.js';
 
 const LATEST = Math.max(...MODELS.map((m) => m.year));
@@ -42,10 +44,32 @@ function useRoute(): string {
 }
 
 export function App() {
-  const [answers, setAnswers] = useState<Answers>({});
+  const [answers, setAnswers] = useState<Answers>(() => {
+    const hash = window.location.hash.replace(/^#\/?/, '');
+    return hash.startsWith(PROFILE_PREFIX)
+      ? decodeAnswers(hash.slice(PROFILE_PREFIX.length), QUESTIONS)
+      : {};
+  });
   const [year, setYear] = useState<number>(LATEST);
   const [preset, setPreset] = useState<string | undefined>();
+  const [copied, setCopied] = useState(false);
   const route = useRoute();
+
+  // Keep the address bar in step with the answers, via replaceState so that
+  // toggling chips does not fill the back button with dead states.
+  useEffect(() => {
+    if (route !== '' && !route.startsWith(PROFILE_PREFIX)) return;
+    const url = profileUrl(answers);
+    if (url !== window.location.href) {
+      window.history.replaceState(null, '', url);
+    }
+  }, [answers, route]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(t);
+  }, [copied]);
 
   const model = modelFor(year);
   const cycles = useMemo(() => predictAcrossCycles(MODELS, answers), [answers]);
@@ -56,6 +80,7 @@ export function App() {
   );
   const current = useMemo(() => predict(model, answers), [model, answers]);
   const flips = useMemo(() => biggestFlips(model, answers, 3), [model, answers]);
+  const resembles = useMemo(() => nearestGroup(model, answers), [model, answers]);
 
   const answered = QUESTIONS.filter((q) => answers[q.id]).length;
   const blocked = current.unsupported.length > 0;
@@ -90,7 +115,10 @@ export function App() {
       )}
 
       <nav className="nav">
-        <a href="#/" className={route === '' ? 'on' : ''}>
+        <a
+          href="#/"
+          className={route === '' || route.startsWith(PROFILE_PREFIX) ? 'on' : ''}
+        >
           Predictor
         </a>
         <a href="#/coefficients" className={route === 'coefficients' ? 'on' : ''}>
@@ -184,6 +212,20 @@ export function App() {
           >
             Clear all answers
           </button>
+          {answered > 0 && (
+            <button
+              type="button"
+              className="reset share"
+              onClick={() => {
+                navigator.clipboard
+                  ?.writeText(profileUrl(answers))
+                  .then(() => setCopied(true))
+                  .catch(() => undefined);
+              }}
+            >
+              {copied ? 'Link copied' : 'Copy link to this profile'}
+            </button>
+          )}
         </section>
 
         <section className="result" aria-live="polite">
@@ -212,6 +254,17 @@ export function App() {
               <div className="cap">
                 chance of voting Democratic in {year}, two-party
               </div>
+              {current.interval && (
+                <div className="ci">
+                  {pct(current.interval[0])}–{pct(current.interval[1])} at 95%
+                  {current.interval[1] - current.interval[0] > 0.2 && (
+                    <span className="ci-warn">
+                      {' '}— too wide to mean much. Some answer here matches
+                      few respondents.
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -228,6 +281,17 @@ export function App() {
               </>
             )}
           </p>
+
+          {!blocked && resembles && (
+            <p className="resemble">
+              You are among <strong>{resembles.label}</strong>, who broke{' '}
+              <strong>{pct(resembles.dem)} Democratic</strong> in {year} —
+              measured directly, with no model involved.{' '}
+              <span className="dim">
+                {resembles.n.toLocaleString()} respondents.
+              </span>
+            </p>
+          )}
 
           {Object.entries(CAVEATS)
             .filter(([id]) => answers[id])

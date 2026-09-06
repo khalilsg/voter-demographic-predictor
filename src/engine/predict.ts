@@ -5,6 +5,7 @@ import type {
   Feature,
   Prediction,
   Question,
+  ReferenceGroup,
 } from './types.js';
 
 export const logit = (p: number): number => Math.log(p / (1 - p));
@@ -54,6 +55,57 @@ export function centeredCoef(
 /** Log-odds of the cycle's average voter, averaging over every question. */
 export function baselineLogit(model: CycleModel): number {
   return model.features.reduce((sum, f) => sum + meanCoef(f), model.intercept);
+}
+
+/**
+ * Standard error of the displacement from the cycle baseline.
+ *
+ * What the app shows for each answer is a contrast — the level's coefficient
+ * minus its feature's share-weighted mean — so the displayed total is
+ *
+ *     Σ_f ( β_chosen(f) − Σ_j share_j β_j(f) )
+ *
+ * a linear combination of correlated estimates. Building the contrast vector c
+ * and evaluating c'Vc gives its variance exactly, where summing per-term
+ * standard errors would not. An unanswered feature contributes its own mean
+ * minus itself, i.e. nothing, which falls out of the same construction.
+ *
+ * Undefined when the model predates the covariance being emitted.
+ */
+export function displacementSe(
+  model: CycleModel,
+  answers: Answers,
+): number | undefined {
+  const cov = model.covariance;
+  if (!cov) return undefined;
+
+  const c = new Array<number>(cov.terms.length).fill(0);
+  const at = (featureId: string, levelId: string) =>
+    cov.terms.indexOf(`${featureId}.${levelId}`);
+
+  for (const feature of model.features) {
+    const levelId = answers[feature.id];
+    if (!levelId || !feature.levels.some((l) => l.id === levelId)) continue;
+
+    const chosen = at(feature.id, levelId);
+    if (chosen >= 0) c[chosen]! += 1; // a reference level has no term: it is 0
+
+    for (const l of feature.levels) {
+      const i = at(feature.id, l.id);
+      if (i >= 0) c[i]! -= l.share;
+    }
+  }
+
+  let variance = 0;
+  for (let i = 0; i < c.length; i++) {
+    if (c[i] === 0) continue;
+    for (let j = 0; j < c.length; j++) {
+      if (c[j] === 0) continue;
+      variance += c[i]! * c[j]! * cov.values[i]![j]!;
+    }
+  }
+  // Numerical noise can push a near-zero variance slightly negative.
+  return Math.sqrt(Math.max(0, variance));
 }
 
 /**
@@ -108,6 +160,15 @@ export function predict(model: CycleModel, answers: Answers): Prediction {
     (id) => answers[id] !== undefined && !modeled.has(id),
   );
 
+  const se = displacementSe(model, answers);
+  // Transform the interval endpoints through the link rather than putting a
+  // symmetric band around the probability, which would run past 0 or 1 for
+  // lopsided profiles and overstate the width near the middle.
+  const interval: [number, number] | undefined =
+    se === undefined
+      ? undefined
+      : [invLogit(logitP - 1.96 * se), invLogit(logitP + 1.96 * se)];
+
   return {
     year: model.year,
     p: invLogit(logitP),
@@ -116,6 +177,8 @@ export function predict(model: CycleModel, answers: Answers): Prediction {
     contributions,
     unanswered,
     unsupported,
+    se,
+    interval,
   };
 }
 
@@ -155,6 +218,35 @@ export function questions(models: CycleModel[]): Question[] {
         .sort((a, b) => a - b),
     };
   });
+}
+
+/**
+ * The most specific published group the answers fully belong to.
+ *
+ * Every criterion must hold — this is "a group you are in", not "a group you
+ * resemble" — and among those, the one defined by the most criteria wins, with
+ * sample size breaking ties. The point is to put one number next to the
+ * prediction that no model produced: what this group actually did, straight
+ * from the data.
+ *
+ * Undefined for models fitted before reference groups were emitted, and for
+ * answer sets that match nothing.
+ */
+export function nearestGroup(
+  model: CycleModel,
+  answers: Answers,
+): ReferenceGroup | undefined {
+  const matches = (model.reference_groups ?? []).filter((g) =>
+    Object.entries(g.criteria).every(([featureId, levels]) => {
+      const answer = answers[featureId];
+      return answer !== undefined && levels.includes(answer);
+    }),
+  );
+  return matches.sort(
+    (a, b) =>
+      Object.keys(b.criteria).length - Object.keys(a.criteria).length ||
+      b.n - a.n,
+  )[0];
 }
 
 /** Cycles that can score this answer set — the ones safe to compare. */

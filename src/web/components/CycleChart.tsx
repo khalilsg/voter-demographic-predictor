@@ -44,7 +44,10 @@ export function CycleChart({
   const allYears = [...predictions, ...excluded]
     .map((r) => r.year)
     .sort((a, b) => a - b);
-  const [lo, hi] = domain(predictions.map((r) => r.p));
+  // Include the band in the domain so it is never clipped by the plot edge.
+  const [lo, hi] = domain(
+    predictions.flatMap((r) => (r.interval ? [r.p, ...r.interval] : [r.p])),
+  );
 
   // Excluded cycles keep their slot on the axis, so the remaining points stay
   // in their true chronological positions instead of sliding together.
@@ -71,6 +74,26 @@ export function CycleChart({
         <line x1={PAD_X} x2={W - PAD_X} y1={mid} y2={mid}
               stroke="var(--line)" strokeDasharray="3 3" />
         <text x={PAD_X - 8} y={mid + 4} textAnchor="end" className="tick">50%</text>
+
+        {/* Confidence band, drawn under the line: forward along the upper
+            bound, back along the lower. Absent on models without covariance. */}
+        {predictions.every((r) => r.interval) && predictions.length > 1 && (
+          <path
+            d={
+              predictions
+                .map((r, i) => `${i ? 'L' : 'M'}${x(slot(r.year))},${y(r.interval![1])}`)
+                .join(' ') +
+              ' ' +
+              [...predictions]
+                .reverse()
+                .map((r) => `L${x(slot(r.year))},${y(r.interval![0])}`)
+                .join(' ') +
+              ' Z'
+            }
+            fill="var(--ink-soft)"
+            opacity="0.16"
+          />
+        )}
 
         <path d={path} fill="none" stroke="var(--ink-soft)" strokeWidth="2" />
 

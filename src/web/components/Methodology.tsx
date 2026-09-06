@@ -29,7 +29,7 @@ export function Methodology() {
       <p>
         One logistic regression per presidential cycle. The outcome is
         two-party Democratic vote — a binary, with third-party and
-        non-voters dropped — and the predictors are ten categorical
+        non-voters dropped — and the predictors are eleven categorical
         demographic variables, entered as dummies with no interactions:
       </p>
       <pre>
@@ -154,6 +154,26 @@ export function Methodology() {
         same period, for roughly 11 points in absolute terms.
       </p>
 
+      <h2>Uncertainty</h2>
+      <p>
+        The interval on the estimate is a 95% band from the sampling error in
+        the demographic coefficients. Standard errors alone would not have been
+        enough to compute it: what the app displays is a{' '}
+        <em>contrast</em> — each answer's coefficient minus its feature's
+        share-weighted mean — so the terms it combines are correlated by
+        construction. The fit exports the coefficient covariance and the app
+        evaluates c′Vc for the contrast it actually shows.
+      </p>
+      <p>
+        The intercept is excluded, so the band covers uncertainty in how groups
+        differ and not in the national level, which after calibration comes
+        from the election rather than the sample. That is why answering nothing
+        gives an interval of zero width, and why the band grows as you answer
+        more. It grows fastest on thin cells: a group with few respondents
+        produces an interval wide enough to say nothing, and the app says so
+        rather than printing a confident number.
+      </p>
+
       <h2>Calibration</h2>
       <p>
         The CES overstates the Democratic share of the reported presidential
@@ -213,6 +233,22 @@ export function Methodology() {
         script takes <code>--no-calibrate</code>.
       </p>
 
+      <h2>Comparing against an unmodelled number</h2>
+      <p>
+        Beneath the estimate the app names the most specific published group
+        your answers fully belong to, and reports what that group actually did
+        — a weighted share computed straight from the respondents, with no
+        model involved. It is the marginal a crosstab reports, deliberately not
+        the model's output, so there is one number on screen the coefficients
+        did not produce and can be checked against.
+      </p>
+      <p>
+        The two will not agree exactly, and the gap is informative rather than
+        an error. The model's figure conditions on everything else being
+        average; the group's figure averages over the group as it actually is,
+        which differs on income, education and geography.
+      </p>
+
       <h2>Questions missing from a cycle</h2>
       <p>
         Union membership was not asked in 2008. Rather than drop the question
@@ -230,10 +266,13 @@ export function Methodology() {
           <strong>Young voters in 2024.</strong> Opt-in panels missed the shift
           toward the Republicans among under-30 voters. This data puts them
           roughly 11 points more Democratic than the exit polls did, and — worse
-          than a level error — trending the wrong way since 2016. Calibration
-          does not fix it, deliberately: the intercept shift is uniform, and
-          pulling one group toward a prior would be a thumb on the scale rather
-          than post-stratification to a known quantity.
+          than a level error — trending the wrong way since 2016. The
+          calibration above cannot reach it: that shift is uniform, and the
+          error here is in the vote rate <em>within</em> the group rather than
+          in the group's size. The repository carries a raking step that would
+          correct it against a known within-group margin, but its targets file
+          ships empty, because filling it takes exit-poll crosstabs and a
+          guessed target would be a prior wearing a data costume.
         </li>
         <li>
           <strong>Panel skew generally.</strong> White college graduates fit

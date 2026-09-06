@@ -65,6 +65,28 @@ https://doi.org/10.7910/DVN/E9N6PH, Harvard Dataverse.
 Take exact version strings and per-year author lists from each dataset page;
 they vary by year.
 
+## Reference data
+
+Two small files under `data/reference/` are joined at fit time. Neither
+contains survey responses.
+
+**`county_urbanicity.json`** — county FIPS to a three-level urbanicity band,
+from the USDA Economic Research Service's
+[Rural-Urban Continuum Codes 2023](https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/),
+a US federal government product and therefore public domain. Codes are
+collapsed 1 / 2-3 / 4-9. Obtained via the MIT-licensed
+[`cwimpy/rurality`](https://github.com/cwimpy/rurality) R package; the data
+itself is the USDA's.
+
+This measures metro **size**, not city versus suburb — a large metro county
+contains both — because county is the finest geography the CES carries for
+every respondent. The level names say so rather than implying more.
+
+**`turnout_targets.json`** — known within-group vote shares to rake the sample
+to, currently empty. See the under-30 limitation below and the file's own
+notes; filling it requires exit-poll crosstabs, and a guessed target would be a
+prior wearing a data costume.
+
 ## Never commit the microdata
 
 The binding constraint here is not the license — CC0 would permit

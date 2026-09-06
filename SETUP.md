@@ -103,6 +103,12 @@ people.
 
 ## 3. Fit
 
+> **Refit after pulling.** Uncertainty bands, the "you are among…" line and the
+> urbanicity question all come from data the fit script now emits and older
+> model files do not carry. The app hides each of them rather than guessing, so
+> until you refit they simply will not appear.
+
+
 ```bash
 python3 scripts/fit_models.py data/raw/cumulative_2006-2024.dta
 ```
@@ -129,7 +135,7 @@ any of the ten questions.
 npm test
 ```
 
-33 tests. They assert that shares sum to 1 per feature, that each feature has
+The suite. They assert that shares sum to 1 per feature, that each feature has
 exactly one reference level, that the specification is identical across all
 five cycles, and that no microdata got tracked.
 

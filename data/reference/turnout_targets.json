@@ -1,0 +1,13 @@
+{
+  "_what": "Known two-party Democratic vote share within demographic groups, used to reweight the sample before fitting. See scripts/fit_models.py, rake_to_targets().",
+  "_why": "The CES reads under-30 voters as roughly 11 points more Democratic than they voted in 2024, and trending the wrong way since 2016. That is a wrong vote rate WITHIN the group, so reweighting the age composition cannot fix it — only a target for the group's vote can.",
+  "_how_to_fill": [
+    "Each entry is: cycle -> feature -> level -> two-party Democratic share (0-1).",
+    "Use an independent measurement, not an impression. The national exit poll (Edison / NEP) age crosstab is the usual source; AP VoteCast is an alternative from 2018 on.",
+    "Convert to TWO-PARTY before entering: dem / (dem + rep), dropping third parties.",
+    "Record where each number came from in _sources. A target with no citation is a prior wearing a data costume, and this file exists to keep those apart.",
+    "Leave a cycle out entirely rather than guessing at it. The fit skips cycles with no targets and says so."
+  ],
+  "_sources": {},
+  "targets": {}
+}

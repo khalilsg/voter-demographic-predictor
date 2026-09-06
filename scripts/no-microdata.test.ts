@@ -81,15 +81,22 @@ describe('no microdata in the repository', () => {
       'id', 'label', 'question', 'levels', 'coef', 'share',
       'n', 'source', 'synthetic',
       'calibrated_to', 'raw_intercept', 'raw_baseline',
+      'covariance', 'terms', 'values',
+      'reference_groups', 'criteria', 'dem',
     ]);
     for (const f of tracked().filter((p) => p.startsWith('data/models/'))) {
       const keys = new Set<string>();
-      const walk = (v: unknown): void => {
-        if (Array.isArray(v)) return v.forEach(walk);
+      const walk = (v: unknown, inCriteria = false): void => {
+        if (Array.isArray(v)) return v.forEach((x) => walk(x, inCriteria));
         if (v && typeof v === 'object') {
           for (const [k, child] of Object.entries(v)) {
+            // A reference group's `criteria` is keyed by question id, so its
+            // keys are data rather than schema. Record the field itself and
+            // stop descending; the guard is about stray payloads, and every
+            // value under it is a list of level ids.
+            if (inCriteria) continue;
             keys.add(k);
-            walk(child);
+            walk(child, k === 'criteria');
           }
         }
       };

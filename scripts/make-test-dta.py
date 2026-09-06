@@ -17,6 +17,7 @@ Requires: pandas, numpy
 from __future__ import annotations
 
 import sys
+import json
 from pathlib import Path
 
 import numpy as np
@@ -49,6 +50,13 @@ STATES = list("""CT ME MA NH RI VT NJ NY PA IL IN MI OH WI IA KS MN MO NE ND SD
 DE DC FL GA MD NC SC VA WV AL KY MS TN AR LA OK TX AZ CO ID MT NV NM UT WY AK CA
 HI OR WA""".split())
 
+COUNTY_FIPS = sorted(
+    json.loads(
+        (Path(__file__).resolve().parent.parent
+         / "data" / "reference" / "county_urbanicity.json").read_text()
+    )["counties"]
+)
+
 rows = []
 for year in CYCLES:
     n = N_PER_CYCLE
@@ -67,6 +75,9 @@ for year in CYCLES:
     union = (np.full(n, None, dtype=object) if year == 2008
              else rng.choice(UNION, n, p=[0.70, 0.13, 0.12, 0.05]))
     st = rng.choice(STATES, n)
+    # Real county FIPS drawn from the urbanicity lookup, so the join is
+    # exercised rather than assumed.
+    county = rng.choice(COUNTY_FIPS, n)
     birthyr = rng.integers(year - 85, year - 18, n)
 
     # Invented vote propensity - just enough structure that the fit converges
@@ -99,6 +110,7 @@ for year in CYCLES:
         "gender": gender, "birthyr": birthyr, "race_h": race, "educ": educ,
         "faminc": faminc, "marstat": marstat, "religion": religion,
         "relig_bornagain": born, "union_hh": union, "st": st,
+        "county_fips": [str(c) for c in county],
     }))
 
 df = pd.concat(rows, ignore_index=True)
@@ -108,10 +120,17 @@ df = pd.concat(rows, ignore_index=True)
 # raises "boolean value of NA is ambiguous" the moment such a mask reaches
 # np.where. A fixture with no NAs cannot catch that, and did not.
 for col, rate in [("voted_pres_party", 0.02), ("gender", 0.01), ("birthyr", 0.01),
+                  ("county_fips", 0.02),
                   ("race_h", 0.02), ("educ", 0.02), ("faminc", 0.03),
                   ("marstat", 0.02), ("religion", 0.02), ("relig_bornagain", 0.05),
                   ("union_hh", 0.03), ("st", 0.01), ("vv_turnout_gvm", 0.10)]:
     df.loc[rng.random(len(df)) < rate, col] = None
+
+# county_fips is a plain string column, and Stata's writer rejects an object
+# array holding NaN rather than None.
+df["county_fips"] = df["county_fips"].astype(object).where(
+    df["county_fips"].notna(), None
+)
 # Categoricals become Stata value labels, which is what the recodes read.
 for col in ["voted_pres_party", "vv_turnout_gvm", "gender", "race_h", "educ",
             "faminc", "marstat", "religion", "relig_bornagain", "union_hh", "st"]:
