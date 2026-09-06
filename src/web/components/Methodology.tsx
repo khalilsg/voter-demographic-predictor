@@ -20,8 +20,8 @@ export function Methodology() {
       <header>
         <h1>Methodology</h1>
         <p className="sub">
-          What this actually computes, what it is fitted on, and the places it
-          is wrong. Assumes you have met a regression before.
+          What this actually computes, what it is fitted on, and its
+          limitations. Assumes you have met a regression before.
         </p>
       </header>
 
@@ -224,7 +224,7 @@ export function Methodology() {
         screen to distinguish them.
       </p>
 
-      <h2>Where it is wrong</h2>
+      <h2>Limitations</h2>
       <ul>
         <li>
           <strong>Young voters in 2024.</strong> Opt-in panels missed the shift
@@ -246,10 +246,11 @@ export function Methodology() {
           candidate choice. Nobody can check who you actually voted for.
         </li>
         <li>
-          <strong>Gender is binary.</strong> The only gender item asked
-          consistently across all five cycles has two categories. That is a
-          limitation of the source data, not a modeling choice, and it means
-          the model has nothing to say about anyone outside it.
+          <strong>Gender comes from a two-option question.</strong> That is the
+          only gender item the CES asked consistently across all five cycles; a
+          version with more categories exists, but only in recent years, and
+          using it would break comparability across the window. The model can
+          only represent answers the survey collected.
         </li>
         <li>
           <strong>Groups, not people.</strong> Every group here contains

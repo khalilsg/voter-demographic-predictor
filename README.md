@@ -39,7 +39,7 @@ share of the electorate, and the raw regression output. Read a row left to
 right and you are looking at a group moving across sixteen years.
 
 **Methodology** (`#/methodology`) — what is computed, what it is fitted
-on, and where it is wrong, for a reader who has met a regression before.
+on, and its limitations, for a reader who has met a regression before.
 Its figures are read from the model files rather than typed in, so it
 cannot drift out of date after a refit.
 
