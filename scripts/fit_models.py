@@ -103,12 +103,72 @@ LABELS = {
                "west": "West"},
 }
 
+NAME_TO_ABBR = {
+    "Connecticut": "CT", "Maine": "ME", "Massachusetts": "MA", "New Hampshire": "NH",
+    "Rhode Island": "RI", "Vermont": "VT", "New Jersey": "NJ", "New York": "NY",
+    "Pennsylvania": "PA", "Illinois": "IL", "Indiana": "IN", "Michigan": "MI",
+    "Ohio": "OH", "Wisconsin": "WI", "Iowa": "IA", "Kansas": "KS", "Minnesota": "MN",
+    "Missouri": "MO", "Nebraska": "NE", "North Dakota": "ND", "South Dakota": "SD",
+    "Delaware": "DE", "District of Columbia": "DC", "Florida": "FL", "Georgia": "GA",
+    "Maryland": "MD", "North Carolina": "NC", "South Carolina": "SC", "Virginia": "VA",
+    "West Virginia": "WV", "Alabama": "AL", "Kentucky": "KY", "Mississippi": "MS",
+    "Tennessee": "TN", "Arkansas": "AR", "Louisiana": "LA", "Oklahoma": "OK",
+    "Texas": "TX", "Arizona": "AZ", "Colorado": "CO", "Idaho": "ID", "Montana": "MT",
+    "Nevada": "NV", "New Mexico": "NM", "Utah": "UT", "Wyoming": "WY", "Alaska": "AK",
+    "California": "CA", "Hawaii": "HI", "Oregon": "OR", "Washington": "WA",
+}
+
 CENSUS_REGION = {
     **{s: "northeast" for s in "CT ME MA NH RI VT NJ NY PA".split()},
     **{s: "midwest" for s in "IL IN MI OH WI IA KS MN MO NE ND SD".split()},
     **{s: "south" for s in "DE DC FL GA MD NC SC VA WV AL KY MS TN AR LA OK TX".split()},
     **{s: "west" for s in "AZ CO ID MT NV NM UT WY AK CA HI OR WA".split()},
 }
+
+CENSUS_REGION_BY_NAME = {
+    name: CENSUS_REGION[abbr] for name, abbr in NAME_TO_ABBR.items()
+}
+
+
+# Ordered income brackets exactly as the cumulative file spells them. Anything
+# outside this list — "Prefer not to say", "Skipped", "Not Asked" — is missing
+# income, NOT a bracket. Relying on categorical order instead would silently
+# rank a refusal as though it were a dollar amount.
+INCOME_BRACKETS = [
+    "Less than 10k", "10k - 20k", "20k - 30k", "30k - 40k", "40k - 50k",
+    "50k - 60k", "60k - 70k", "70k - 80k", "80k - 100k", "100k - 120k",
+    "120k - 150k", "150k+",
+]
+
+
+def mask(cond) -> np.ndarray:
+    """A nullable-boolean comparison as a plain numpy bool array, NA -> False.
+
+    pandas string columns compare to pd.NA rather than False, and numpy raises
+    "boolean value of NA is ambiguous" the moment such a mask reaches np.where
+    or np.select. Every comparison against survey text goes through here.
+    """
+    if isinstance(cond, pd.Series):
+        return cond.fillna(False).to_numpy(dtype=bool, copy=True)
+    return np.asarray(cond, dtype=bool)
+
+
+def classify(col: pd.Series, rules, default: str | None = None) -> pd.Series:
+    """Apply (predicate, label) rules in order; first match wins.
+
+    Rows missing in `col` stay missing — they are never swept into `default`,
+    which is the failure mode that turns "did not answer" into a real category
+    and quietly biases a coefficient.
+    """
+    out = pd.Series(pd.NA, index=col.index, dtype="string")
+    unassigned = col.notna().to_numpy(dtype=bool, copy=True)
+    for predicate, label in rules:
+        hit = unassigned & mask(predicate(col))
+        out.loc[hit] = label
+        unassigned &= ~hit
+    if default is not None:
+        out.loc[unassigned] = default
+    return out
 
 
 def read_source(path: Path) -> pd.DataFrame:
@@ -149,10 +209,11 @@ def income_quintile(df: pd.DataFrame) -> pd.Series:
     the same position in the distribution in 2008 and in 2024, even though the
     dollars behind it differ.
     """
-    order = df["faminc"].astype("category").cat.codes.replace(-1, np.nan)
+    rank_of = {label: i for i, label in enumerate(INCOME_BRACKETS)}
+    order = s(df["faminc"]).map(rank_of).astype("Float64")
     pct = order.groupby(df["year"]).rank(pct=True, na_option="keep")
     return pd.cut(
-        pct, [0, 0.2, 0.4, 0.6, 0.8, 1.0],
+        pct.astype(float), [0, 0.2, 0.4, 0.6, 0.8, 1.0],
         labels=["bottom20", "lower_mid", "middle", "upper_mid", "top20"],
         include_lowest=True,
     ).astype("string")
@@ -164,9 +225,11 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     # Trap 3: voted_pres_party in a presidential year is THAT year's vote. The
     # voted_pres_08/_12/_16/_20 columns are RECALLED prior votes and carry
     # heavy recall bias toward the eventual winner - never use them as y.
-    vote = s(df["voted_pres_party"])
-    df["y"] = np.where(vote == "Democratic", 1.0,
-                       np.where(vote == "Republican", 0.0, np.nan))
+    # Anything not one of the two major parties (third party, refusal, blank)
+    # maps to NA and is dropped: the model is two-party by construction.
+    df["y"] = s(df["voted_pres_party"]).map(
+        {"Democratic": 1.0, "Republican": 0.0}
+    ).astype("Float64")
 
     age = df["year"] - pd.to_numeric(df["birthyr"], errors="coerce")
     df["age"] = pd.cut(age, [-np.inf, 29, 44, 64, np.inf],
@@ -175,56 +238,50 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     # Trap 4: the binary `gender` item is the only one asked consistently
     # across the whole window. gender4 exists only in recent cycles and cannot
     # be used without breaking comparability.
-    df["gender"] = s(df["gender"]).map({"Male": "man", "Female": "woman"})
+    df["gender"] = s(df["gender"]).map({"Male": "man", "Female": "woman"}).astype("string")
 
     # Trap 2: race_h (any-part Hispanic), not raw `race`. The Hispanic
     # follow-up was routed three different ways across the window, so raw race
     # is not comparable between cycles. Maintainers flag race_h as stable.
-    race = s(df["race_h"])
-    df["race"] = np.select(
-        [race.str.startswith("White", na=False), race.str.startswith("Black", na=False),
-         race.str.startswith("Hispanic", na=False), race.str.startswith("Asian", na=False),
-         race.isna()],
-        ["white", "black", "hispanic", "asian", None],
-        default="other",
-    )
+    df["race"] = classify(s(df["race_h"]), [
+        (lambda c: c.str.startswith("White"), "white"),
+        (lambda c: c.str.startswith("Black"), "black"),
+        (lambda c: c.str.startswith("Hispanic"), "hispanic"),
+        (lambda c: c.str.startswith("Asian"), "asian"),
+    ], default="other")
 
     df["educ"] = s(df["educ"]).map({
         "No HS": "no_hs", "High school graduate": "hs", "Some college": "some_college",
         "2-year": "two_year", "4-year": "four_year", "Post-grad": "postgrad",
-    })
+    }).astype("string")
 
     df["income"] = income_quintile(df)
 
-    mar = s(df["marstat"])
-    df["marstat"] = np.where(mar.isna(), None,
-                             np.where(mar.str.startswith("Married", na=False),
-                                      "married", "not_married"))
+    df["marstat"] = classify(s(df["marstat"]), [
+        (lambda c: c.str.startswith("Married"), "married"),
+    ], default="not_married")
 
-    rel = s(df["religion"])
-    df["religion"] = np.select(
-        [rel.str.startswith("Protestant", na=False),
-         rel.str.contains("Catholic", na=False),
-         rel.str.startswith("Jewish", na=False),
-         rel.str.startswith("Muslim", na=False),
-         rel.str.startswith("Nothing in particular", na=False),
-         rel.str.startswith(("Atheist", "Agnostic"), na=False),
-         rel.isna()],
-        ["protestant", "catholic", "jewish", "muslim", "nothing", "none", None],
-        default="other",
-    )
+    df["religion"] = classify(s(df["religion"]), [
+        (lambda c: c.str.startswith("Protestant"), "protestant"),
+        (lambda c: c.str.contains("Catholic"), "catholic"),
+        (lambda c: c.str.startswith("Jewish"), "jewish"),
+        (lambda c: c.str.startswith("Muslim"), "muslim"),
+        (lambda c: c.str.startswith("Nothing in particular"), "nothing"),
+        (lambda c: c.str.startswith(("Atheist", "Agnostic")), "none"),
+    ], default="other")
 
-    born = s(df["relig_bornagain"])
-    df["bornagain"] = np.where(born.isna(), None, np.where(born == "Yes", "yes", "no"))
-    union = s(df["union_hh"])
-    df["union_hh"] = np.where(union.isna(), None, np.where(union == "Yes", "yes", "no"))
+    df["bornagain"] = s(df["relig_bornagain"]).map({"Yes": "yes", "No": "no"}).astype("string")
+    df["union_hh"] = s(df["union_hh"]).map({"Yes": "yes", "No": "no"}).astype("string")
 
-    df["region"] = s(df["st"]).map(CENSUS_REGION)
+    st = s(df["st"])
+    # The file codes state as an abbreviation, but some readers surface the
+    # full name; accept either rather than silently producing an empty region.
+    df["region"] = st.map(CENSUS_REGION).fillna(st.map(CENSUS_REGION_BY_NAME)).astype("string")
 
     # Validated voters where vote validation ran; self-report otherwise.
     if "vv_turnout_gvm" in df:
         vv = s(df["vv_turnout_gvm"])
-        df = df[vv.isna() | vv.str.contains("Voted", na=False)]
+        df = df[mask(vv.isna()) | mask(vv.str.contains("Voted"))]
 
     return df
 

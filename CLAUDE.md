@@ -72,6 +72,24 @@ it before touching either fit script. The value-label strings in it are the
 real ones; if a recode stops matching them, the fit yields nothing rather than
 failing loudly.
 
+**The fixture must stay messy.** Its first version had no missing values, no
+third-party votes, and no income non-response — so it passed while the real
+file crashed on line one and, worse, would have silently ranked "Prefer not to
+say" as a dollar amount. A clean fixture tests nothing that survey data does.
+When adding a column, inject NA into it.
+
+Two pandas traps the messy fixture now covers, both of which shipped once:
+
+- A `string` column compares to `pd.NA`, not `False`. The moment such a mask
+  reaches `np.where`/`np.select`, numpy raises *"boolean value of NA is
+  ambiguous"*. Every comparison against survey text goes through `mask()`.
+- `notna().to_numpy()` can hand back a read-only view; mutating it raises
+  *"output array is read-only"*. Pass `copy=True`.
+
+Missing answers must stay missing. `classify()` never sweeps them into its
+`default`, because turning "declined to answer" into a real category biases a
+coefficient without failing anything.
+
 ---
 
 ## Tests must not encode fixture properties

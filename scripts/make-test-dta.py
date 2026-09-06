@@ -34,6 +34,10 @@ EDUC = ["No HS", "High school graduate", "Some college", "2-year", "4-year", "Po
 FAMINC = ["Less than 10k", "10k - 20k", "20k - 30k", "30k - 40k", "40k - 50k",
           "50k - 60k", "60k - 70k", "70k - 80k", "80k - 100k", "100k - 120k",
           "120k - 150k", "150k+"]
+# Non-bracket income answers, which the real file also carries. These are
+# missing income, not a high bracket — a fixture without them let a version of
+# fit_models.py ship that ranked a refusal as though it were a dollar amount.
+FAMINC_NONRESPONSE = ["Prefer not to say", "Skipped", "Not Asked"]
 MARSTAT = ["Married", "Separated", "Divorced", "Widowed", "Single", "Domestic partnership"]
 RELIGION = ["Protestant", "Roman Catholic", "Jewish", "Muslim", "Buddhist", "Hindu",
             "Atheist", "Agnostic", "Nothing in particular", "Something else"]
@@ -48,7 +52,8 @@ for year in CYCLES:
     gender = rng.choice(GENDER, n)
     race = rng.choice(RACE_H, n, p=[0.70, 0.11, 0.11, 0.04, 0.02, 0.02])
     educ = rng.choice(EDUC, n, p=[0.04, 0.27, 0.22, 0.10, 0.24, 0.13])
-    faminc = rng.choice(FAMINC, n)
+    faminc = rng.choice(FAMINC + FAMINC_NONRESPONSE, n,
+                        p=[0.08] * 12 + [0.02, 0.01, 0.01])
     marstat = rng.choice(MARSTAT, n, p=[0.52, 0.03, 0.12, 0.06, 0.24, 0.03])
     religion = rng.choice(RELIGION, n, p=[0.38, 0.20, 0.02, 0.01, 0.01, 0.01,
                                           0.05, 0.04, 0.20, 0.08])
@@ -71,11 +76,17 @@ for year in CYCLES:
     )
     y = rng.random(n) < 1 / (1 + np.exp(-lp))
 
+    # Third-party and unrecorded votes: the model is two-party, so these must
+    # drop out rather than land in either bucket.
+    party = np.where(y, "Democratic", "Republican").astype(object)
+    other = rng.random(n) < 0.04
+    party[other] = rng.choice(["Other", "Not sure", "Did not vote"], other.sum())
+
     rows.append(pd.DataFrame({
         "year": year,
         "case_id": np.arange(n) + year * 100000,
         "weight": rng.gamma(9, 1 / 9, n),
-        "voted_pres_party": np.where(y, "Democratic", "Republican"),
+        "voted_pres_party": party,
         "vv_turnout_gvm": rng.choice(["Voted", "No Record"], n, p=[0.85, 0.15]),
         "gender": gender, "birthyr": birthyr, "race_h": race, "educ": educ,
         "faminc": faminc, "marstat": marstat, "religion": religion,
@@ -83,6 +94,16 @@ for year in CYCLES:
     }))
 
 df = pd.concat(rows, ignore_index=True)
+
+# Punch missing values into every recoded column. Real survey data is full of
+# them, and pandas string columns compare to pd.NA rather than False — numpy
+# raises "boolean value of NA is ambiguous" the moment such a mask reaches
+# np.where. A fixture with no NAs cannot catch that, and did not.
+for col, rate in [("voted_pres_party", 0.02), ("gender", 0.01), ("birthyr", 0.01),
+                  ("race_h", 0.02), ("educ", 0.02), ("faminc", 0.03),
+                  ("marstat", 0.02), ("religion", 0.02), ("relig_bornagain", 0.05),
+                  ("union_hh", 0.03), ("st", 0.01), ("vv_turnout_gvm", 0.10)]:
+    df.loc[rng.random(len(df)) < rate, col] = None
 # Categoricals become Stata value labels, which is what the recodes read.
 for col in ["voted_pres_party", "vv_turnout_gvm", "gender", "race_h", "educ",
             "faminc", "marstat", "religion", "relig_bornagain", "union_hh", "st"]:

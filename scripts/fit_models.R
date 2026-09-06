@@ -41,9 +41,19 @@ raw <- read_dta(src) %>%
 # as-is across cycles, inflation masquerades as a shifting income effect. We
 # convert to a within-year population quintile, so "middle" means the same
 # position in the distribution in 2008 and 2024 even though the dollars differ.
+# Ordered income brackets exactly as the cumulative file spells them. Anything
+# outside this list - "Prefer not to say", "Skipped", "Not Asked" - is missing
+# income, NOT a bracket. Relying on factor order instead silently ranks a
+# refusal as though it were a dollar amount.
+INCOME_BRACKETS <- c(
+  "Less than 10k", "10k - 20k", "20k - 30k", "30k - 40k", "40k - 50k",
+  "50k - 60k", "60k - 70k", "70k - 80k", "80k - 100k", "100k - 120k",
+  "120k - 150k", "150k+"
+)
+
 income_quintile <- function(df) {
   df %>%
-    mutate(faminc_ord = suppressWarnings(as.integer(haven::as_factor(faminc)))) %>%
+    mutate(faminc_ord = match(as.character(haven::as_factor(faminc)), INCOME_BRACKETS)) %>%
     group_by(year) %>%
     mutate(
       inc_rank = if_else(is.na(faminc_ord), NA_real_,
