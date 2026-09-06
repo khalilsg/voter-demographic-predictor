@@ -173,3 +173,32 @@ fieldset.partial { border-color: color-mix(in oklab, var(--warn-line) 55%, var(-
   margin: 20px 0 0;
 }
 .caveat.detail strong { color: var(--ink); }
+
+/* Nav */
+.nav { display: flex; gap: 16px; margin-bottom: 20px; font-size: 13px; }
+.nav a { color: var(--ink-soft); text-decoration: none; padding-bottom: 3px;
+         border-bottom: 2px solid transparent; }
+.nav a:hover { color: var(--ink); }
+.nav a.on { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+
+/* Coefficients page */
+.coef { max-width: 100%; }
+.coef header h1 { font-size: 26px; }
+.viewpick { display: flex; gap: 6px; margin-bottom: 10px; }
+.blurb { color: var(--ink-soft); font-size: 13px; max-width: 68ch; margin: 0 0 24px; }
+.coef-block { margin-bottom: 28px; }
+.coef-block h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em;
+                 color: var(--ink-soft); margin: 0 0 8px; }
+.coef-block h2 .dim { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px;
+             background: var(--card); }
+.coef table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.coef th, .coef td { padding: 6px 12px; text-align: right; white-space: nowrap;
+                     font-variant-numeric: tabular-nums; }
+.coef thead th { color: var(--ink-soft); font-weight: 600; font-size: 12px;
+                 border-bottom: 1px solid var(--line); }
+.coef tbody th[scope="row"] { text-align: left; font-weight: 400; }
+.coef tbody tr + tr th, .coef tbody tr + tr td { border-top: 1px solid var(--line); }
+.coef .dim { color: var(--ink-soft); }
+.foot { color: var(--ink-soft); font-size: 12px; max-width: 70ch; margin: 8px 0 0; }
+.foot a { color: inherit; }

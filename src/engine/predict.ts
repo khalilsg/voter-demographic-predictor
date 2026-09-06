@@ -20,6 +20,37 @@ function meanCoef(feature: Feature): number {
   return feature.levels.reduce((sum, l) => sum + l.share * l.coef, 0);
 }
 
+/**
+ * Share-weighted mean coefficient of one feature in one cycle, or undefined if
+ * that cycle does not carry the feature.
+ *
+ * Exported so the coefficients page can show the same centered numbers the
+ * waterfall does, rather than re-deriving the centering and drifting from it.
+ */
+export function featureMean(
+  model: CycleModel,
+  featureId: string,
+): number | undefined {
+  const f = model.features.find((x) => x.id === featureId);
+  return f ? meanCoef(f) : undefined;
+}
+
+/**
+ * A level's effect relative to that cycle's average voter, in log-odds — the
+ * quantity the contribution bars show. Undefined when the cycle lacks the
+ * feature or the level.
+ */
+export function centeredCoef(
+  model: CycleModel,
+  featureId: string,
+  levelId: string,
+): number | undefined {
+  const f = model.features.find((x) => x.id === featureId);
+  const l = f?.levels.find((x) => x.id === levelId);
+  if (!f || !l) return undefined;
+  return l.coef - meanCoef(f);
+}
+
 /** Log-odds of the cycle's average voter, averaging over every question. */
 export function baselineLogit(model: CycleModel): number {
   return model.features.reduce((sum, f) => sum + meanCoef(f), model.intercept);

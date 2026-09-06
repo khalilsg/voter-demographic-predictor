@@ -29,6 +29,14 @@ npm run typecheck   # BOTH tsconfigs — tsconfig.json and tsconfig.web.json
 npm run build
 ```
 
+## Two pages
+
+**Predictor** — answer ten questions, see the five-cycle line.
+**Coefficients** (`#/coefficients`) — every number the model holds, as tables:
+each level's effect in log-odds relative to that cycle's average voter, its
+share of the electorate, and the raw regression output. Read a row left to
+right and you are looking at a group moving across sixteen years.
+
 ## How it works
 
 One logistic regression per cycle, on
@@ -73,3 +81,8 @@ and the tracked model files are aggregate coefficients, never microdata (see
 
 One-time setup, after the first push: **Settings → Pages → Source →
 GitHub Actions**.
+
+## License
+
+Code is [MIT](LICENSE). The survey data underneath is CC0 — see
+[DATA.md](DATA.md) for citation.

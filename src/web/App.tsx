@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MODELS, anySynthetic, modelFor } from '../engine/models.js';
 import {
   biggestFlips,
@@ -8,6 +8,7 @@ import {
   questions,
 } from '../engine/predict.js';
 import type { Answers } from '../engine/types.js';
+import { Coefficients } from './components/Coefficients.js';
 import { CycleChart } from './components/CycleChart.js';
 import { Waterfall } from './components/Waterfall.js';
 import { CAVEATS, caveatFor } from './caveats.js';
@@ -24,9 +25,24 @@ const listYears = (years: number[]): string =>
 /** "that year" / "those years", so the copy reads for one cycle or several. */
 const thatYear = (n: number): string => (n === 1 ? 'that year' : 'those years');
 
+/**
+ * Hash routing, so a deep link works on a static host with no server rewrite
+ * rules. Two views only; anything unrecognised falls back to the predictor.
+ */
+function useRoute(): string {
+  const [hash, setHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const onChange = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', onChange);
+    return () => window.removeEventListener('hashchange', onChange);
+  }, []);
+  return hash.replace(/^#\/?/, '');
+}
+
 export function App() {
   const [answers, setAnswers] = useState<Answers>({});
   const [year, setYear] = useState<number>(LATEST);
+  const route = useRoute();
 
   const model = modelFor(year);
   const cycles = useMemo(() => predictAcrossCycles(MODELS, answers), [answers]);
@@ -58,6 +74,19 @@ export function App() {
         </div>
       )}
 
+      <nav className="nav">
+        <a href="#/" className={route === 'coefficients' ? '' : 'on'}>
+          Predictor
+        </a>
+        <a href="#/coefficients" className={route === 'coefficients' ? 'on' : ''}>
+          Coefficients
+        </a>
+      </nav>
+
+      {route === 'coefficients' ? (
+        <Coefficients questions={QUESTIONS} />
+      ) : (
+        <>
       <header>
         <h1>Would you have voted blue or red?</h1>
         <p className="sub">
@@ -201,6 +230,8 @@ export function App() {
           )}
         </section>
       </main>
+        </>
+      )}
 
       <footer>
         <p>

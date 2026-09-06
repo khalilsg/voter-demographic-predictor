@@ -1,4 +1,5 @@
 import type { Contribution } from '../../engine/types.js';
+import { standaloneLabel } from '../labels.js';
 
 /**
  * Each bar is one term's log-odds push relative to the average voter of that
@@ -24,7 +25,7 @@ export function Waterfall({ contributions }: { contributions: Contribution[] }) 
         return (
           <li key={c.featureId}>
             <span className="wf-label" title={c.featureLabel}>
-              {c.levelLabel}
+              {standaloneLabel(c.featureId, c.levelId, c.levelLabel)}
             </span>
             <span className="wf-track">
               <span
