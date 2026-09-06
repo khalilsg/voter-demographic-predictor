@@ -13,6 +13,7 @@ import { CycleChart } from './components/CycleChart.js';
 import { Methodology } from './components/Methodology.js';
 import { Waterfall } from './components/Waterfall.js';
 import { CAVEATS, caveatFor } from './caveats.js';
+import { PRESETS } from './presets.js';
 import { leanColor, leanLabel, pct } from './format.js';
 
 const LATEST = Math.max(...MODELS.map((m) => m.year));
@@ -43,6 +44,7 @@ function useRoute(): string {
 export function App() {
   const [answers, setAnswers] = useState<Answers>({});
   const [year, setYear] = useState<number>(LATEST);
+  const [preset, setPreset] = useState<string | undefined>();
   const route = useRoute();
 
   const model = modelFor(year);
@@ -58,12 +60,24 @@ export function App() {
   const answered = QUESTIONS.filter((q) => answers[q.id]).length;
   const blocked = current.unsupported.length > 0;
 
-  const set = (featureId: string, levelId: string) =>
+  const loadPreset = (id: string) => {
+    const p = PRESETS.find((x) => x.id === id);
+    if (!p) return;
+    setAnswers({ ...p.answers });
+    setPreset(id);
+    setYear(LATEST);
+  };
+
+  const set = (featureId: string, levelId: string) => {
+    // Once an answer is edited by hand it is no longer that example profile,
+    // so the note describing it stops applying.
+    setPreset(undefined);
     setAnswers((prev) => ({
       ...prev,
       // Clicking the selected option clears it, so "no answer" stays reachable.
       [featureId]: prev[featureId] === levelId ? undefined : levelId,
     }));
+  };
 
   return (
     <div className="app">
@@ -104,6 +118,28 @@ export function App() {
 
       <main>
         <section className="questions" aria-label="Your demographics">
+          <div className="presets">
+            <p className="presets-lead">Or load an example:</p>
+            <div className="opts">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={preset === p.id ? 'opt on' : 'opt'}
+                  aria-pressed={preset === p.id}
+                  onClick={() => loadPreset(p.id)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {preset && (
+              <p className="presets-look">
+                {PRESETS.find((p) => p.id === preset)!.look}
+              </p>
+            )}
+          </div>
+
           {QUESTIONS.map((f) => (
             <fieldset key={f.id} className={f.missingFrom.length ? 'partial' : undefined}>
               <legend>{f.label}</legend>
@@ -138,7 +174,14 @@ export function App() {
               </div>
             </fieldset>
           ))}
-          <button type="button" className="reset" onClick={() => setAnswers({})}>
+          <button
+            type="button"
+            className="reset"
+            onClick={() => {
+              setAnswers({});
+              setPreset(undefined);
+            }}
+          >
             Clear all answers
           </button>
         </section>

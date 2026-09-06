@@ -230,3 +230,11 @@ fieldset.partial { border-color: color-mix(in oklab, var(--warn-line) 55%, var(-
                   border-bottom: 1px solid var(--line); }
 .prose tbody th[scope="row"] { text-align: left; font-weight: 400; }
 .prose tbody tr + tr th, .prose tbody tr + tr td { border-top: 1px solid var(--line); }
+
+/* Example profiles */
+.presets { margin: 0 0 16px; }
+.presets-lead { font-size: 13px; color: var(--ink-soft); margin: 0 0 7px; }
+.presets-look {
+  font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+  border-left: 2px solid var(--dem); padding: 2px 0 2px 9px; margin: 9px 0 0;
+}
