@@ -1,6 +1,6 @@
 {
   "year": 2024,
-  "intercept": -1.4708,
+  "intercept": -1.4908,
   "features": [
     {
       "id": "gender",
@@ -259,18 +259,24 @@
     {
       "id": "union_hh",
       "label": "Union household",
-      "question": "Are you or is anyone in your household a union member?",
+      "question": "Have you or anyone in your household ever belonged to a union?",
       "levels": [
         {
-          "id": "no",
-          "label": "No",
+          "id": "never",
+          "label": "Never",
           "coef": 0,
-          "share": 0.88
+          "share": 0.74
         },
         {
-          "id": "yes",
-          "label": "Yes",
-          "coef": 0.25,
+          "id": "former",
+          "label": "Formerly",
+          "coef": 0.1,
+          "share": 0.14
+        },
+        {
+          "id": "current",
+          "label": "Currently",
+          "coef": 0.3,
           "share": 0.12
         }
       ]

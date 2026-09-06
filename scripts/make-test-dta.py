@@ -30,7 +30,7 @@ rng = np.random.default_rng(20260906)
 # in fit_models.py stop matching these strings, the fit silently yields nothing.
 GENDER = ["Male", "Female"]
 RACE_H = ["White", "Black", "Hispanic", "Asian", "Native American", "Middle Eastern"]
-EDUC = ["No HS", "High school graduate", "Some college", "2-year", "4-year", "Post-grad"]
+EDUC = ["No HS", "High School Graduate", "Some College", "2-Year", "4-Year", "Post-Grad"]
 FAMINC = ["Less than 10k", "10k - 20k", "20k - 30k", "30k - 40k", "40k - 50k",
           "50k - 60k", "60k - 70k", "70k - 80k", "80k - 100k", "100k - 120k",
           "120k - 150k", "150k+"]
@@ -38,10 +38,13 @@ FAMINC = ["Less than 10k", "10k - 20k", "20k - 30k", "30k - 40k", "40k - 50k",
 # missing income, not a high bracket — a fixture without them let a version of
 # fit_models.py ship that ranked a refusal as though it were a dollar amount.
 FAMINC_NONRESPONSE = ["Prefer not to say", "Skipped", "Not Asked"]
-MARSTAT = ["Married", "Separated", "Divorced", "Widowed", "Single", "Domestic partnership"]
+MARSTAT = ["Married", "Separated", "Divorced", "Widowed", "Single / Never Married",
+           "Domestic Partnership"]
 RELIGION = ["Protestant", "Roman Catholic", "Jewish", "Muslim", "Buddhist", "Hindu",
-            "Atheist", "Agnostic", "Nothing in particular", "Something else"]
+            "Atheist", "Agnostic", "Nothing in Particular", "Something Else", "Mormon",
+            "Eastern or Greek Orthodox"]
 YESNO = ["Yes", "No"]
+UNION = ["No, Never", "Yes, Formerly", "Yes, Currently", "Not Sure"]
 STATES = list("""CT ME MA NH RI VT NJ NY PA IL IN MI OH WI IA KS MN MO NE ND SD
 DE DC FL GA MD NC SC VA WV AL KY MS TN AR LA OK TX AZ CO ID MT NV NM UT WY AK CA
 HI OR WA""".split())
@@ -55,10 +58,10 @@ for year in CYCLES:
     faminc = rng.choice(FAMINC + FAMINC_NONRESPONSE, n,
                         p=[0.08] * 12 + [0.02, 0.01, 0.01])
     marstat = rng.choice(MARSTAT, n, p=[0.52, 0.03, 0.12, 0.06, 0.24, 0.03])
-    religion = rng.choice(RELIGION, n, p=[0.38, 0.20, 0.02, 0.01, 0.01, 0.01,
-                                          0.05, 0.04, 0.20, 0.08])
+    religion = rng.choice(RELIGION, n, p=[0.36, 0.19, 0.02, 0.01, 0.01, 0.01,
+                                          0.05, 0.04, 0.19, 0.07, 0.03, 0.02])
     born = rng.choice(YESNO, n, p=[0.30, 0.70])
-    union = rng.choice(YESNO, n, p=[0.13, 0.87])
+    union = rng.choice(UNION, n, p=[0.70, 0.13, 0.12, 0.05])
     st = rng.choice(STATES, n)
     birthyr = rng.integers(year - 85, year - 18, n)
 
@@ -71,7 +74,7 @@ for year in CYCLES:
         + 0.80 * (race == "Hispanic")
         + 0.50 * np.isin(educ, ["4-year", "Post-grad"]) * ((year - 2008) / 16)
         - 0.90 * (born == "Yes")
-        + 0.30 * (union == "Yes")
+        + 0.30 * (union == "Yes, Currently")
         + 0.30 * ((year - birthyr) < 30)
     )
     y = rng.random(n) < 1 / (1 + np.exp(-lp))
@@ -80,14 +83,15 @@ for year in CYCLES:
     # drop out rather than land in either bucket.
     party = np.where(y, "Democratic", "Republican").astype(object)
     other = rng.random(n) < 0.04
-    party[other] = rng.choice(["Other", "Not sure", "Did not vote"], other.sum())
+    party[other] = rng.choice(["Other", "Third Party", "Undervote"], other.sum())
 
     rows.append(pd.DataFrame({
         "year": year,
         "case_id": np.arange(n) + year * 100000,
         "weight": rng.gamma(9, 1 / 9, n),
         "voted_pres_party": party,
-        "vv_turnout_gvm": rng.choice(["Voted", "No Record"], n, p=[0.85, 0.15]),
+        "vv_turnout_gvm": rng.choice(["Voted", "No Record of Voting", "No Voter File"],
+                                     n, p=[0.82, 0.17, 0.01]),
         "gender": gender, "birthyr": birthyr, "race_h": race, "educ": educ,
         "faminc": faminc, "marstat": marstat, "religion": religion,
         "relig_bornagain": born, "union_hh": union, "st": st,

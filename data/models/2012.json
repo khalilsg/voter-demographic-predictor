@@ -1,6 +1,6 @@
 {
   "year": 2012,
-  "intercept": -0.9848,
+  "intercept": -1.008,
   "features": [
     {
       "id": "gender",
@@ -259,19 +259,25 @@
     {
       "id": "union_hh",
       "label": "Union household",
-      "question": "Are you or is anyone in your household a union member?",
+      "question": "Have you or anyone in your household ever belonged to a union?",
       "levels": [
         {
-          "id": "no",
-          "label": "No",
+          "id": "never",
+          "label": "Never",
           "coef": 0,
-          "share": 0.85
+          "share": 0.71
         },
         {
-          "id": "yes",
-          "label": "Yes",
-          "coef": 0.325,
-          "share": 0.15
+          "id": "former",
+          "label": "Formerly",
+          "coef": 0.1375,
+          "share": 0.155
+        },
+        {
+          "id": "current",
+          "label": "Currently",
+          "coef": 0.375,
+          "share": 0.135
         }
       ]
     },

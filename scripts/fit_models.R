@@ -53,7 +53,7 @@ INCOME_BRACKETS <- c(
 
 income_quintile <- function(df) {
   df %>%
-    mutate(faminc_ord = match(as.character(haven::as_factor(faminc)), INCOME_BRACKETS)) %>%
+    mutate(faminc_ord = match(tolower(as.character(haven::as_factor(faminc))), tolower(INCOME_BRACKETS))) %>%
     group_by(year) %>%
     mutate(
       inc_rank = if_else(is.na(faminc_ord), NA_real_,
@@ -85,6 +85,9 @@ CENSUS_REGION <- c(
 )
 
 lab <- function(x) as.character(haven::as_factor(x))
+# Casing has drifted between releases twice (the 2025 file title-cases labels
+# the codebook writes in sentence case), so match lower-cased throughout.
+low <- function(x) tolower(lab(x))
 
 prepped <- raw %>%
   income_quintile() %>%
@@ -93,8 +96,8 @@ prepped <- raw %>%
     # voted_pres_party in a presidential year is THAT year's vote. The
     # voted_pres_08 / _12 / _16 / _20 columns are RECALLED prior votes and
     # carry heavy recall bias toward the winner - never use them as y.
-    vote = lab(voted_pres_party),
-    y = case_when(vote == "Democratic" ~ 1L, vote == "Republican" ~ 0L, TRUE ~ NA_integer_),
+    vote = low(voted_pres_party),
+    y = case_when(vote == "democratic" ~ 1L, vote == "republican" ~ 0L, TRUE ~ NA_integer_),
 
     age_n = year - as.integer(birthyr),
     age = case_when(age_n < 30 ~ "18_29", age_n < 45 ~ "30_44",
@@ -104,49 +107,54 @@ prepped <- raw %>%
     # The binary `gender` item is the only one asked consistently across the
     # whole window. gender4 exists only in recent cycles and cannot be used
     # without breaking comparability.
-    gender = recode(lab(gender), "Male" = "man", "Female" = "woman", .default = NA_character_),
+    gender = recode(low(gender), "male" = "man", "female" = "woman", .default = NA_character_),
 
     # --- Trap 2: race ------------------------------------------------------
     # race_h (any-part Hispanic), not raw `race`: the Hispanic follow-up
     # question was routed differently in three separate periods, so raw race
     # is not comparable across cycles. The maintainers flag race_h as stable.
     race = case_when(
-      grepl("^White", lab(race_h))    ~ "white",
-      grepl("^Black", lab(race_h))    ~ "black",
-      grepl("^Hispanic", lab(race_h)) ~ "hispanic",
-      grepl("^Asian", lab(race_h))    ~ "asian",
-      is.na(lab(race_h))              ~ NA_character_,
+      grepl("^white", low(race_h))    ~ "white",
+      grepl("^black", low(race_h))    ~ "black",
+      grepl("^hispanic", low(race_h)) ~ "hispanic",
+      grepl("^asian", low(race_h))    ~ "asian",
+      is.na(low(race_h))              ~ NA_character_,
       TRUE                            ~ "other"
     ),
 
-    educ = recode(lab(educ),
-      "No HS" = "no_hs", "High school graduate" = "hs", "Some college" = "some_college",
-      "2-year" = "two_year", "4-year" = "four_year", "Post-grad" = "postgrad",
+    educ = recode(low(educ),
+      "no hs" = "no_hs", "high school graduate" = "hs", "some college" = "some_college",
+      "2-year" = "two_year", "4-year" = "four_year", "post-grad" = "postgrad",
       .default = NA_character_),
 
-    marstat = if_else(grepl("^Married", lab(marstat)), "married", "not_married",
+    marstat = if_else(grepl("^married", low(marstat)), "married", "not_married",
                       missing = NA_character_),
 
     religion = case_when(
-      grepl("^Protestant", lab(religion))       ~ "protestant",
-      grepl("^Roman Catholic|^Catholic", lab(religion)) ~ "catholic",
-      grepl("^Jewish", lab(religion))           ~ "jewish",
-      grepl("^Muslim", lab(religion))           ~ "muslim",
-      grepl("^Nothing in particular", lab(religion)) ~ "nothing",
-      grepl("^Atheist|^Agnostic", lab(religion))~ "none",
-      is.na(lab(religion))                      ~ NA_character_,
-      TRUE                                      ~ "other"
+      grepl("^protestant", low(religion))         ~ "protestant",
+      grepl("catholic", low(religion))            ~ "catholic",
+      grepl("^jewish", low(religion))             ~ "jewish",
+      grepl("^muslim", low(religion))             ~ "muslim",
+      grepl("^nothing in particular", low(religion)) ~ "nothing",
+      grepl("^atheist|^agnostic", low(religion))  ~ "none",
+      is.na(low(religion))                        ~ NA_character_,
+      TRUE                                        ~ "other"
     ),
 
-    bornagain = if_else(lab(relig_bornagain) == "Yes", "yes", "no", missing = NA_character_),
-    union_hh  = if_else(lab(union_hh) == "Yes", "yes", "no", missing = NA_character_),
-    region    = unname(CENSUS_REGION[lab(st)])
+    bornagain = recode(low(relig_bornagain), "yes" = "yes", "no" = "no",
+                       .default = NA_character_),
+    # The file records current, former and never separately. "Not Sure" is not
+    # a fourth position, it is a non-answer, so it maps to missing.
+    union_hh  = recode(low(union_hh), "yes, currently" = "current",
+                       "yes, formerly" = "former", "no, never" = "never",
+                       .default = NA_character_),
+    region    = unname(CENSUS_REGION[toupper(lab(st))])
   )
 
 # Validated voters where vote validation ran; otherwise self-reported vote.
 if ("vv_turnout_gvm" %in% names(prepped)) {
   prepped <- prepped %>%
-    filter(is.na(vv_turnout_gvm) | grepl("Voted", lab(vv_turnout_gvm)))
+    filter(is.na(vv_turnout_gvm) | low(vv_turnout_gvm) == "voted")
 }
 
 FEATURES <- list(
@@ -158,14 +166,14 @@ FEATURES <- list(
   marstat   = c("married", "not_married"),
   religion  = c("protestant", "catholic", "jewish", "muslim", "other", "nothing", "none"),
   bornagain = c("no", "yes"),
-  union_hh  = c("no", "yes"),
+  union_hh  = c("never", "former", "current"),
   region    = c("northeast", "midwest", "south", "west")
 )
 # Reference level per feature; must match the level whose coefficient the
 # engine expects to be exactly 0 (asserted in predict.test.ts).
 REFERENCE <- c(gender = "man", age = "45_64", race = "white", educ = "hs",
                income = "middle", marstat = "married", religion = "protestant",
-               bornagain = "no", union_hh = "no", region = "midwest")
+               bornagain = "no", union_hh = "never", region = "midwest")
 
 LABELS <- list(
   gender = c(man = "Man", woman = "Woman"),
@@ -182,7 +190,7 @@ LABELS <- list(
                muslim = "Muslim", other = "Something else",
                nothing = "Nothing in particular", none = "Atheist or agnostic"),
   bornagain = c(no = "No", yes = "Yes"),
-  union_hh = c(no = "No", yes = "Yes"),
+  union_hh = c(never = "Never", former = "Formerly", current = "Currently"),
   region = c(northeast = "Northeast", midwest = "Midwest", south = "South", west = "West")
 )
 QUESTIONS <- c(
@@ -193,7 +201,7 @@ QUESTIONS <- c(
   marstat = "What is your marital status?",
   religion = "What is your present religion, if any?",
   bornagain = "Would you describe yourself as a born-again or evangelical Christian?",
-  union_hh = "Are you or is anyone in your household a union member?",
+  union_hh = "Have you or anyone in your household ever belonged to a union?",
   region = "Where do you live?"
 )
 FEATURE_LABELS <- c(gender = "Gender", age = "Age", race = "Race or ethnicity",

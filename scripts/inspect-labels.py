@@ -53,6 +53,17 @@ for f in ["y", *FEATURES]:
     print(f"{f:<12}{miss:>11.1%}   {verdict}")
 
 print("\n" + "=" * 72)
+print("MISSINGNESS PER CYCLE")
+print("=" * 72)
+print("A feature not asked in some cycle empties that cycle alone, which the")
+print("pooled figure above hides.\n")
+per_cycle = (
+    df.assign(**{f: df[f].isna() for f in ["y", *FEATURES]})
+      .groupby("year")[["y", *FEATURES]].mean()
+)
+print((per_cycle * 100).round(1).to_string())
+
+print("\n" + "=" * 72)
 print("RAW LABEL TEXT (what the recodes must match)")
 print("=" * 72)
 for col in SOURCE_COLUMNS:

@@ -132,10 +132,11 @@ const SPEC: FeatureSpec[] = [
   },
   {
     id: 'union_hh', label: 'Union household',
-    question: 'Are you or is anyone in your household a union member?',
+    question: 'Have you or anyone in your household ever belonged to a union?',
     levels: [
-      { id: 'no',  label: 'No',  coef: [0, 0],       share: [0.84, 0.88] },
-      { id: 'yes', label: 'Yes', coef: [0.35, 0.25], share: [0.16, 0.12] },
+      { id: 'never',   label: 'Never',     coef: [0, 0],       share: [0.70, 0.74] },
+      { id: 'former',  label: 'Formerly',  coef: [0.15, 0.10], share: [0.16, 0.14] },
+      { id: 'current', label: 'Currently', coef: [0.40, 0.30], share: [0.14, 0.12] },
     ],
   },
   {

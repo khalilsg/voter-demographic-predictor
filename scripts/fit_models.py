@@ -50,7 +50,7 @@ FEATURES: dict[str, list[str]] = {
     "marstat":   ["married", "not_married"],
     "religion":  ["protestant", "catholic", "jewish", "muslim", "other", "nothing", "none"],
     "bornagain": ["no", "yes"],
-    "union_hh":  ["no", "yes"],
+    "union_hh":  ["never", "former", "current"],
     "region":    ["northeast", "midwest", "south", "west"],
 }
 
@@ -59,7 +59,7 @@ FEATURES: dict[str, list[str]] = {
 REFERENCE = {
     "gender": "man", "age": "45_64", "race": "white", "educ": "hs",
     "income": "middle", "marstat": "married", "religion": "protestant",
-    "bornagain": "no", "union_hh": "no", "region": "midwest",
+    "bornagain": "no", "union_hh": "never", "region": "midwest",
 }
 
 FEATURE_LABELS = {
@@ -79,7 +79,7 @@ QUESTIONS = {
     "marstat": "What is your marital status?",
     "religion": "What is your present religion, if any?",
     "bornagain": "Would you describe yourself as a born-again or evangelical Christian?",
-    "union_hh": "Are you or is anyone in your household a union member?",
+    "union_hh": "Have you or anyone in your household ever belonged to a union?",
     "region": "Where do you live?",
 }
 
@@ -98,7 +98,7 @@ LABELS = {
                  "muslim": "Muslim", "other": "Something else",
                  "nothing": "Nothing in particular", "none": "Atheist or agnostic"},
     "bornagain": {"no": "No", "yes": "Yes"},
-    "union_hh": {"no": "No", "yes": "Yes"},
+    "union_hh": {"never": "Never", "former": "Formerly", "current": "Currently"},
     "region": {"northeast": "Northeast", "midwest": "Midwest", "south": "South",
                "west": "West"},
 }
@@ -201,6 +201,18 @@ def s(col: pd.Series) -> pd.Series:
     return col.astype("string").str.strip()
 
 
+def norm(col: pd.Series) -> pd.Series:
+    """Lower-cased labels, for matching.
+
+    The 2025 release title-cases labels the codebook writes in sentence case
+    ("High School Graduate", "Nothing in Particular"), which silently emptied
+    two features. Casing has drifted between releases twice now, so every
+    comparison against survey text is case-insensitive and every mapping key
+    below is written lower-case.
+    """
+    return s(col).str.lower()
+
+
 def income_quintile(df: pd.DataFrame) -> pd.Series:
     """Trap 1: CES codes income in NOMINAL dollar brackets, top-coded at 150k+.
 
@@ -209,8 +221,8 @@ def income_quintile(df: pd.DataFrame) -> pd.Series:
     the same position in the distribution in 2008 and in 2024, even though the
     dollars behind it differ.
     """
-    rank_of = {label: i for i, label in enumerate(INCOME_BRACKETS)}
-    order = s(df["faminc"]).map(rank_of).astype("Float64")
+    rank_of = {label.lower(): i for i, label in enumerate(INCOME_BRACKETS)}
+    order = norm(df["faminc"]).map(rank_of).astype("Float64")
     pct = order.groupby(df["year"]).rank(pct=True, na_option="keep")
     return pd.cut(
         pct.astype(float), [0, 0.2, 0.4, 0.6, 0.8, 1.0],
@@ -225,10 +237,10 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     # Trap 3: voted_pres_party in a presidential year is THAT year's vote. The
     # voted_pres_08/_12/_16/_20 columns are RECALLED prior votes and carry
     # heavy recall bias toward the eventual winner - never use them as y.
-    # Anything not one of the two major parties (third party, refusal, blank)
-    # maps to NA and is dropped: the model is two-party by construction.
-    df["y"] = s(df["voted_pres_party"]).map(
-        {"Democratic": 1.0, "Republican": 0.0}
+    # "Other", "Third Party" and "Undervote" map to NA and drop out: the model
+    # is two-party by construction.
+    df["y"] = norm(df["voted_pres_party"]).map(
+        {"democratic": 1.0, "republican": 0.0}
     ).astype("Float64")
 
     age = df["year"] - pd.to_numeric(df["birthyr"], errors="coerce")
@@ -238,50 +250,60 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     # Trap 4: the binary `gender` item is the only one asked consistently
     # across the whole window. gender4 exists only in recent cycles and cannot
     # be used without breaking comparability.
-    df["gender"] = s(df["gender"]).map({"Male": "man", "Female": "woman"}).astype("string")
+    df["gender"] = norm(df["gender"]).map({"male": "man", "female": "woman"}).astype("string")
 
     # Trap 2: race_h (any-part Hispanic), not raw `race`. The Hispanic
     # follow-up was routed three different ways across the window, so raw race
     # is not comparable between cycles. Maintainers flag race_h as stable.
-    df["race"] = classify(s(df["race_h"]), [
-        (lambda c: c.str.startswith("White"), "white"),
-        (lambda c: c.str.startswith("Black"), "black"),
-        (lambda c: c.str.startswith("Hispanic"), "hispanic"),
-        (lambda c: c.str.startswith("Asian"), "asian"),
+    # "Mixed", "Native American" and "Middle Eastern" fall to "other".
+    df["race"] = classify(norm(df["race_h"]), [
+        (lambda c: c.str.startswith("white"), "white"),
+        (lambda c: c.str.startswith("black"), "black"),
+        (lambda c: c.str.startswith("hispanic"), "hispanic"),
+        (lambda c: c.str.startswith("asian"), "asian"),
     ], default="other")
 
-    df["educ"] = s(df["educ"]).map({
-        "No HS": "no_hs", "High school graduate": "hs", "Some college": "some_college",
-        "2-year": "two_year", "4-year": "four_year", "Post-grad": "postgrad",
+    df["educ"] = norm(df["educ"]).map({
+        "no hs": "no_hs", "high school graduate": "hs", "some college": "some_college",
+        "2-year": "two_year", "4-year": "four_year", "post-grad": "postgrad",
     }).astype("string")
 
     df["income"] = income_quintile(df)
 
-    df["marstat"] = classify(s(df["marstat"]), [
-        (lambda c: c.str.startswith("Married"), "married"),
+    df["marstat"] = classify(norm(df["marstat"]), [
+        (lambda c: c.str.startswith("married"), "married"),
     ], default="not_married")
 
-    df["religion"] = classify(s(df["religion"]), [
-        (lambda c: c.str.startswith("Protestant"), "protestant"),
-        (lambda c: c.str.contains("Catholic"), "catholic"),
-        (lambda c: c.str.startswith("Jewish"), "jewish"),
-        (lambda c: c.str.startswith("Muslim"), "muslim"),
-        (lambda c: c.str.startswith("Nothing in particular"), "nothing"),
-        (lambda c: c.str.startswith(("Atheist", "Agnostic")), "none"),
+    # "Mormon", "Eastern or Greek Orthodox", "Buddhist", "Hindu" and
+    # "Something Else" all fall to "other".
+    df["religion"] = classify(norm(df["religion"]), [
+        (lambda c: c.str.startswith("protestant"), "protestant"),
+        (lambda c: c.str.contains("catholic"), "catholic"),
+        (lambda c: c.str.startswith("jewish"), "jewish"),
+        (lambda c: c.str.startswith("muslim"), "muslim"),
+        (lambda c: c.str.startswith("nothing in particular"), "nothing"),
+        (lambda c: c.str.startswith(("atheist", "agnostic")), "none"),
     ], default="other")
 
-    df["bornagain"] = s(df["relig_bornagain"]).map({"Yes": "yes", "No": "no"}).astype("string")
-    df["union_hh"] = s(df["union_hh"]).map({"Yes": "yes", "No": "no"}).astype("string")
+    df["bornagain"] = norm(df["relig_bornagain"]).map({"yes": "yes", "no": "no"}).astype("string")
+
+    # The file records current, former and never separately. "Not Sure" is not
+    # a fourth position, it is a non-answer, so it maps to missing.
+    df["union_hh"] = norm(df["union_hh"]).map({
+        "yes, currently": "current", "yes, formerly": "former", "no, never": "never",
+    }).astype("string")
 
     st = s(df["st"])
     # The file codes state as an abbreviation, but some readers surface the
     # full name; accept either rather than silently producing an empty region.
-    df["region"] = st.map(CENSUS_REGION).fillna(st.map(CENSUS_REGION_BY_NAME)).astype("string")
+    df["region"] = (st.str.upper().map(CENSUS_REGION)
+                    .fillna(st.str.title().map(CENSUS_REGION_BY_NAME)).astype("string"))
 
     # Validated voters where vote validation ran; self-report otherwise.
+    # "No Record of Voting" and "No Voter File" are validated non-voters.
     if "vv_turnout_gvm" in df:
-        vv = s(df["vv_turnout_gvm"])
-        df = df[mask(vv.isna()) | mask(vv.str.contains("Voted"))]
+        vv = norm(df["vv_turnout_gvm"])
+        df = df[mask(vv.isna()) | mask(vv == "voted")]
 
     return df
 
