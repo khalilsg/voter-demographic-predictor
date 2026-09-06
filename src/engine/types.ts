@@ -1,0 +1,76 @@
+/**
+ * A fitted model is one logistic regression per election cycle, sharing an
+ * identical specification across cycles. Because the specification never
+ * changes, differences between cycles are differences in the electorate
+ * rather than differences in the model — that comparability is the whole
+ * point of the project (DESIGN.md §1).
+ */
+
+/** One answer option for one question, e.g. "4-year degree" under `educ`. */
+export interface Level {
+  id: string;
+  label: string;
+  /**
+   * Logistic coefficient in log-odds of voting Democratic, two-party.
+   * Reference-level coded: exactly one level per feature has coef 0.
+   * Never read this directly for display — it is relative to an arbitrary
+   * reference level. Use `contributions()`, which re-centers on the
+   * electorate mean.
+   */
+  coef: number;
+  /** Share of that cycle's two-party voters in this level. Sums to 1 per feature. */
+  share: number;
+}
+
+export interface Feature {
+  id: string;
+  label: string;
+  /** Question text shown in the UI, kept close to the CES wording. */
+  question: string;
+  levels: Level[];
+}
+
+export interface CycleModel {
+  year: number;
+  /** Log-odds intercept: the reference-level respondent. */
+  intercept: number;
+  features: Feature[];
+  meta: {
+    /** Unweighted respondents the cycle was fitted on. */
+    n: number;
+    source: string;
+    /**
+     * True while the file holds placeholder coefficients rather than a real
+     * fit. The UI must say so prominently — an unlabelled fake number about
+     * an election is the one output this project must never produce.
+     */
+    synthetic: boolean;
+  };
+}
+
+/** A user's answers: feature id -> level id. Missing keys are allowed. */
+export type Answers = Record<string, string | undefined>;
+
+export interface Contribution {
+  featureId: string;
+  featureLabel: string;
+  levelId: string;
+  levelLabel: string;
+  /**
+   * Log-odds push relative to the average voter of that cycle. Positive is
+   * Democratic. These sum exactly to `logitP - baselineLogit`.
+   */
+  logOdds: number;
+}
+
+export interface Prediction {
+  year: number;
+  /** Probability of voting Democratic, two-party, in [0, 1]. */
+  p: number;
+  logitP: number;
+  /** Log-odds of the cycle's average voter — where you sit if you answer nothing. */
+  baselineLogit: number;
+  contributions: Contribution[];
+  /** Questions left unanswered, averaged over rather than guessed. */
+  unanswered: string[];
+}

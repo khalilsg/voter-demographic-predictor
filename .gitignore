@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# CES microdata is NEVER committed, including to a private repo.
+# It carries zipcode + birth year + gender + voter-file matches, which are
+# re-identifying in combination. Only fitted coefficients (data/models/*.json)
+# are tracked. See DATA.md.
+data/raw/
+*.dta
+*.sav
+*.csv.gz
+
+# tsc -b build info
+*.tsbuildinfo

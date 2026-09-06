@@ -1,0 +1,315 @@
+{
+  "year": 2016,
+  "intercept": -1.1398,
+  "features": [
+    {
+      "id": "gender",
+      "label": "Gender",
+      "question": "Are you...?",
+      "levels": [
+        {
+          "id": "man",
+          "label": "Man",
+          "coef": 0,
+          "share": 0.48
+        },
+        {
+          "id": "woman",
+          "label": "Woman",
+          "coef": 0.4,
+          "share": 0.52
+        }
+      ]
+    },
+    {
+      "id": "age",
+      "label": "Age",
+      "question": "How old are you?",
+      "levels": [
+        {
+          "id": "18_29",
+          "label": "18–29",
+          "coef": 0.5,
+          "share": 0.17
+        },
+        {
+          "id": "30_44",
+          "label": "30–44",
+          "coef": 0.225,
+          "share": 0.255
+        },
+        {
+          "id": "45_64",
+          "label": "45–64",
+          "coef": 0,
+          "share": 0.345
+        },
+        {
+          "id": "65_up",
+          "label": "65+",
+          "coef": -0.125,
+          "share": 0.23
+        }
+      ]
+    },
+    {
+      "id": "race",
+      "label": "Race or ethnicity",
+      "question": "What racial or ethnic group best describes you?",
+      "levels": [
+        {
+          "id": "white",
+          "label": "White",
+          "coef": 0,
+          "share": 0.72
+        },
+        {
+          "id": "black",
+          "label": "Black",
+          "coef": 2.125,
+          "share": 0.11
+        },
+        {
+          "id": "hispanic",
+          "label": "Hispanic / Latino",
+          "coef": 0.875,
+          "share": 0.105
+        },
+        {
+          "id": "asian",
+          "label": "Asian",
+          "coef": 0.8,
+          "share": 0.03
+        },
+        {
+          "id": "other",
+          "label": "Other",
+          "coef": 0.5,
+          "share": 0.035
+        }
+      ]
+    },
+    {
+      "id": "educ",
+      "label": "Education",
+      "question": "What is the highest level of education you have completed?",
+      "levels": [
+        {
+          "id": "no_hs",
+          "label": "No high school diploma",
+          "coef": 0.025,
+          "share": 0.04
+        },
+        {
+          "id": "hs",
+          "label": "High school graduate",
+          "coef": 0,
+          "share": 0.28
+        },
+        {
+          "id": "some_college",
+          "label": "Some college",
+          "coef": 0.075,
+          "share": 0.22
+        },
+        {
+          "id": "two_year",
+          "label": "2-year degree",
+          "coef": 0.1,
+          "share": 0.095
+        },
+        {
+          "id": "four_year",
+          "label": "4-year degree",
+          "coef": 0.175,
+          "share": 0.235
+        },
+        {
+          "id": "postgrad",
+          "label": "Postgraduate degree",
+          "coef": 0.475,
+          "share": 0.13
+        }
+      ]
+    },
+    {
+      "id": "income",
+      "label": "Household income",
+      "question": "Roughly where does your household income sit nationally?",
+      "levels": [
+        {
+          "id": "bottom20",
+          "label": "Bottom fifth",
+          "coef": 0.25,
+          "share": 0.2
+        },
+        {
+          "id": "lower_mid",
+          "label": "Lower-middle",
+          "coef": 0.1,
+          "share": 0.2
+        },
+        {
+          "id": "middle",
+          "label": "Middle",
+          "coef": 0,
+          "share": 0.2
+        },
+        {
+          "id": "upper_mid",
+          "label": "Upper-middle",
+          "coef": -0.04,
+          "share": 0.2
+        },
+        {
+          "id": "top20",
+          "label": "Top fifth",
+          "coef": -0.05,
+          "share": 0.2
+        }
+      ]
+    },
+    {
+      "id": "marstat",
+      "label": "Marital status",
+      "question": "What is your marital status?",
+      "levels": [
+        {
+          "id": "married",
+          "label": "Married",
+          "coef": 0,
+          "share": 0.55
+        },
+        {
+          "id": "not_married",
+          "label": "Not married",
+          "coef": 0.425,
+          "share": 0.45
+        }
+      ]
+    },
+    {
+      "id": "religion",
+      "label": "Religion",
+      "question": "What is your present religion, if any?",
+      "levels": [
+        {
+          "id": "protestant",
+          "label": "Protestant",
+          "coef": 0,
+          "share": 0.43
+        },
+        {
+          "id": "catholic",
+          "label": "Catholic",
+          "coef": 0.2,
+          "share": 0.22
+        },
+        {
+          "id": "jewish",
+          "label": "Jewish",
+          "coef": 0.925,
+          "share": 0.02
+        },
+        {
+          "id": "muslim",
+          "label": "Muslim",
+          "coef": 1.25,
+          "share": 0.01
+        },
+        {
+          "id": "other",
+          "label": "Something else",
+          "coef": 0.425,
+          "share": 0.075
+        },
+        {
+          "id": "nothing",
+          "label": "Nothing in particular",
+          "coef": 0.775,
+          "share": 0.18
+        },
+        {
+          "id": "none",
+          "label": "Atheist or agnostic",
+          "coef": 1.15,
+          "share": 0.065
+        }
+      ]
+    },
+    {
+      "id": "bornagain",
+      "label": "Born-again or evangelical",
+      "question": "Would you describe yourself as a born-again or evangelical Christian?",
+      "levels": [
+        {
+          "id": "no",
+          "label": "No",
+          "coef": 0,
+          "share": 0.7
+        },
+        {
+          "id": "yes",
+          "label": "Yes",
+          "coef": -0.9,
+          "share": 0.3
+        }
+      ]
+    },
+    {
+      "id": "union_hh",
+      "label": "Union household",
+      "question": "Are you or is anyone in your household a union member?",
+      "levels": [
+        {
+          "id": "no",
+          "label": "No",
+          "coef": 0,
+          "share": 0.86
+        },
+        {
+          "id": "yes",
+          "label": "Yes",
+          "coef": 0.3,
+          "share": 0.14
+        }
+      ]
+    },
+    {
+      "id": "region",
+      "label": "Region",
+      "question": "Where do you live?",
+      "levels": [
+        {
+          "id": "northeast",
+          "label": "Northeast",
+          "coef": 0.325,
+          "share": 0.18
+        },
+        {
+          "id": "midwest",
+          "label": "Midwest",
+          "coef": 0,
+          "share": 0.215
+        },
+        {
+          "id": "south",
+          "label": "South",
+          "coef": -0.225,
+          "share": 0.38
+        },
+        {
+          "id": "west",
+          "label": "West",
+          "coef": 0.25,
+          "share": 0.225
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "n": 64600,
+    "source": "PLACEHOLDER — not fitted. Replace via scripts/fit_models.R.",
+    "synthetic": true
+  }
+}

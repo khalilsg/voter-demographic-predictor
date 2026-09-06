@@ -1,0 +1,139 @@
+import type {
+  Answers,
+  Contribution,
+  CycleModel,
+  Feature,
+  Prediction,
+} from './types.js';
+
+export const logit = (p: number): number => Math.log(p / (1 - p));
+export const invLogit = (x: number): number => 1 / (1 + Math.exp(-x));
+
+/**
+ * Share-weighted mean coefficient of a feature: the contribution of a voter
+ * who is "average" on this question. Subtracting it from a level's raw
+ * coefficient removes the arbitrary reference level, so contributions become
+ * comparable across features and across cycles.
+ */
+function meanCoef(feature: Feature): number {
+  return feature.levels.reduce((sum, l) => sum + l.share * l.coef, 0);
+}
+
+/** Log-odds of the cycle's average voter, averaging over every question. */
+export function baselineLogit(model: CycleModel): number {
+  return model.features.reduce((sum, f) => sum + meanCoef(f), model.intercept);
+}
+
+/**
+ * Predict the two-party Democratic vote probability for one set of answers
+ * under one cycle's model.
+ *
+ * An unanswered question contributes its electorate mean, i.e. zero push. That
+ * is the honest default: it neither invents an answer nor drops the question
+ * from the intercept, and it keeps the identity below exact.
+ *
+ * Invariant, asserted in the tests and relied on by the waterfall chart:
+ *
+ *     logitP === baselineLogit + sum(contributions)
+ *
+ * The bars in the UI are therefore not an illustration of the arithmetic —
+ * they are the arithmetic.
+ */
+export function predict(model: CycleModel, answers: Answers): Prediction {
+  const contributions: Contribution[] = [];
+  const unanswered: string[] = [];
+  let logitP = model.intercept;
+
+  for (const feature of model.features) {
+    const mean = meanCoef(feature);
+    const levelId = answers[feature.id];
+    const level = levelId
+      ? feature.levels.find((l) => l.id === levelId)
+      : undefined;
+
+    if (!level) {
+      // Unknown ids are treated as unanswered rather than throwing: the UI can
+      // load a saved answer set after a question's levels have been recoded.
+      unanswered.push(feature.id);
+      logitP += mean;
+      continue;
+    }
+
+    logitP += level.coef;
+    contributions.push({
+      featureId: feature.id,
+      featureLabel: feature.label,
+      levelId: level.id,
+      levelLabel: level.label,
+      logOdds: level.coef - mean,
+    });
+  }
+
+  return {
+    year: model.year,
+    p: invLogit(logitP),
+    logitP,
+    baselineLogit: baselineLogit(model),
+    contributions,
+    unanswered,
+  };
+}
+
+/** The same answers across every cycle — the realignment view. */
+export function predictAcrossCycles(
+  models: CycleModel[],
+  answers: Answers,
+): Prediction[] {
+  return [...models]
+    .sort((a, b) => a.year - b.year)
+    .map((m) => predict(m, answers));
+}
+
+export interface Flip {
+  featureId: string;
+  featureLabel: string;
+  fromLabel: string;
+  toLabel: string;
+  /** Probability if this one answer changed. */
+  p: number;
+  /** Signed change in probability from the current prediction. */
+  delta: number;
+}
+
+/**
+ * Which single different answer would move the prediction furthest, and in
+ * which direction. Exhaustive over levels — the search space is a few dozen
+ * cells, so there is no reason to be clever.
+ */
+export function biggestFlips(
+  model: CycleModel,
+  answers: Answers,
+  limit = 3,
+): Flip[] {
+  const current = predict(model, answers);
+  const flips: Flip[] = [];
+
+  for (const feature of model.features) {
+    const currentLevel = feature.levels.find(
+      (l) => l.id === answers[feature.id],
+    );
+    if (!currentLevel) continue;
+
+    for (const level of feature.levels) {
+      if (level.id === currentLevel.id) continue;
+      const p = predict(model, { ...answers, [feature.id]: level.id }).p;
+      flips.push({
+        featureId: feature.id,
+        featureLabel: feature.label,
+        fromLabel: currentLevel.label,
+        toLabel: level.label,
+        p,
+        delta: p - current.p,
+      });
+    }
+  }
+
+  return flips
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+    .slice(0, limit);
+}
