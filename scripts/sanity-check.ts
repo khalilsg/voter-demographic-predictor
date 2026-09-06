@@ -28,6 +28,20 @@ const ACTUAL: Record<number, number> = {
 const p = (answers: Record<string, string>, m: (typeof MODELS)[number]) =>
   predict(m, answers).p * 100;
 
+/**
+ * Young voters moved sharply toward the Republicans in 2024, and opt-in online
+ * panels are known to miss it — under-30 respondents skew Democratic and
+ * weighting does not recover the gap. On the CES this shows as an under-30
+ * share that keeps RISING through 2024 while the electorate moved the other
+ * way. Not a recode bug and not something calibration fixes; the intercept
+ * shift is uniform, and correcting one group toward a prior would be a thumb
+ * on the scale rather than post-stratification. Watched, not patched.
+ * See DESIGN.md section 7.
+ */
+const YOUNG_TREND_NOTE =
+  'under-30 Democratic share rose from 2016 to 2024; the electorate moved the ' +
+  'other way. Known online-panel weakness — see DESIGN.md section 7.';
+
 const row = (s: string, w: number) => s.padEnd(w);
 const num = (x: number, w: number) => x.toFixed(0).padStart(w);
 
@@ -78,6 +92,9 @@ for (const m of MODELS) {
   // value indicates a problem.
   if (black > 99) warnings.push(`${m.year}: a Black voter average on everything else at ${black.toFixed(0)}% D is implausibly absolute — check for an empty cell.`);
 }
+
+const youngTrend = p({ age: '18_29' }, MODELS.at(-1)!) - p({ age: '18_29' }, MODELS[2]!);
+if (youngTrend > 2) warnings.push(YOUNG_TREND_NOTE);
 
 const hispTrend = p({ race: 'hispanic' }, MODELS.at(-1)!) - p({ race: 'hispanic' }, MODELS[2]!);
 if (hispTrend > -1) {
