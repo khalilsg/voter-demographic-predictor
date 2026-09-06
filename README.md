@@ -73,14 +73,19 @@ Pushing to `main` builds and publishes to GitHub Pages via
 `npm run typecheck`, and refuses to publish while `data/models/` still holds
 placeholder coefficients.
 
-**GitHub Pages requires a public repository** on free accounts. This repo is
-private; either make it public in Settings, or use a plan that allows Pages on
-private repos. Nothing sensitive is published either way — the site is static
-and the tracked model files are aggregate coefficients, never microdata (see
-[DATA.md](DATA.md)).
+**The Pages source must be set to GitHub Actions**, once, by hand:
 
-One-time setup, after the first push: **Settings → Pages → Source →
-GitHub Actions**.
+> Settings → Pages → Build and deployment → Source → **GitHub Actions**
+
+If it is set to a branch instead, GitHub runs its own Jekyll build over the
+repository root in parallel with this workflow, renders `README.md` as the
+homepage, and serves that — while this workflow still reports success, because
+it uploaded an artifact nobody reads. The workflow now checks for this and
+fails with instructions rather than deploying into the void.
+
+Pages also requires a public repository on free accounts. Nothing sensitive is
+published either way: the site is static, and the tracked model files are
+aggregate coefficients, never microdata (see [DATA.md](DATA.md)).
 
 ## License
 

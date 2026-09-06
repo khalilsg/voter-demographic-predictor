@@ -24,6 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # A repository whose Pages source is a BRANCH ignores this workflow's
+      # artifact entirely and serves the repo root through Jekyll instead —
+      # which renders README.md as the homepage. Both builds run, both go
+      # green, and the wrong one wins. That is a silent failure worth turning
+      # into a loud one, because the deploy job cannot detect it: it uploads
+      # and "succeeds" while nothing it produced is served.
+      - name: Verify Pages builds from Actions, not from a branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build_type=$(gh api "repos/${{ github.repository }}/pages" \
+            --jq '.build_type' 2>/dev/null || echo "none")
+          if [ "$build_type" != "workflow" ]; then
+            echo "::error::Pages source is '$build_type', not 'workflow'."
+            echo "GitHub is serving the repository root with Jekyll and ignoring this build."
+            echo "Fix once, in the repository settings:"
+            echo "  Settings -> Pages -> Build and deployment -> Source -> GitHub Actions"
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -46,9 +66,11 @@ jobs:
 
       - run: npm run build
 
-      # enablement: true turns Pages on and points it at Actions, so the repo
-      # needs no manual Settings step. Without it the first run fails with
-      # "Get Pages site failed" until someone flips the source by hand.
+      # enablement: true CREATES the Pages site when there is none, which is
+      # what got the first deploy past "Get Pages site failed". It does not
+      # change the source of a site that already exists — a repository already
+      # publishing from a branch keeps doing so, which is what the check above
+      # exists to catch.
       - uses: actions/configure-pages@v5
         with:
           enablement: true
