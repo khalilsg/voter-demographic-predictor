@@ -1,6 +1,6 @@
 {
   "year": 2020,
-  "intercept": -1.2411,
+  "intercept": -1.3893,
   "features": [
     {
       "id": "gender",
@@ -10,14 +10,14 @@
         {
           "id": "man",
           "label": "Man",
-          "coef": 0,
-          "share": 0.48
+          "coef": 0.0,
+          "share": 0.4863
         },
         {
           "id": "woman",
           "label": "Woman",
-          "coef": 0.425,
-          "share": 0.52
+          "coef": 0.5032,
+          "share": 0.5137
         }
       ]
     },
@@ -29,26 +29,26 @@
         {
           "id": "18_29",
           "label": "18–29",
-          "coef": 0.525,
-          "share": 0.165
+          "coef": 0.3393,
+          "share": 0.1224
         },
         {
           "id": "30_44",
           "label": "30–44",
-          "coef": 0.2375,
-          "share": 0.2525
+          "coef": 0.3588,
+          "share": 0.2129
         },
         {
           "id": "45_64",
           "label": "45–64",
-          "coef": 0,
-          "share": 0.3375
+          "coef": 0.0,
+          "share": 0.3795
         },
         {
           "id": "65_up",
           "label": "65+",
-          "coef": -0.1125,
-          "share": 0.245
+          "coef": 0.0842,
+          "share": 0.2852
         }
       ]
     },
@@ -60,32 +60,32 @@
         {
           "id": "white",
           "label": "White",
-          "coef": 0,
-          "share": 0.7
+          "coef": 0.0,
+          "share": 0.7421
         },
         {
           "id": "black",
           "label": "Black",
-          "coef": 2.0375,
-          "share": 0.11
+          "coef": 3.4577,
+          "share": 0.109
         },
         {
           "id": "hispanic",
           "label": "Hispanic / Latino",
-          "coef": 0.7375,
-          "share": 0.1175
+          "coef": 1.1556,
+          "share": 0.0963
         },
         {
           "id": "asian",
           "label": "Asian",
-          "coef": 0.775,
-          "share": 0.035
+          "coef": 0.7612,
+          "share": 0.0287
         },
         {
           "id": "other",
           "label": "Other",
-          "coef": 0.475,
-          "share": 0.0375
+          "coef": -0.0898,
+          "share": 0.0239
         }
       ]
     },
@@ -97,38 +97,38 @@
         {
           "id": "no_hs",
           "label": "No high school diploma",
-          "coef": -0.0375,
-          "share": 0.035
+          "coef": 0.2532,
+          "share": 0.0481
         },
         {
           "id": "hs",
           "label": "High school graduate",
-          "coef": 0,
-          "share": 0.27
+          "coef": 0.0,
+          "share": 0.2433
         },
         {
           "id": "some_college",
           "label": "Some college",
-          "coef": 0.0875,
-          "share": 0.22
+          "coef": 0.2465,
+          "share": 0.2169
         },
         {
           "id": "two_year",
           "label": "2-year degree",
-          "coef": 0.125,
-          "share": 0.0975
+          "coef": 0.1067,
+          "share": 0.1104
         },
         {
           "id": "four_year",
           "label": "4-year degree",
-          "coef": 0.3125,
-          "share": 0.2425
+          "coef": 0.7351,
+          "share": 0.2384
         },
         {
           "id": "postgrad",
           "label": "Postgraduate degree",
-          "coef": 0.6375,
-          "share": 0.135
+          "coef": 1.1687,
+          "share": 0.143
         }
       ]
     },
@@ -140,32 +140,32 @@
         {
           "id": "bottom20",
           "label": "Bottom fifth",
-          "coef": 0.225,
-          "share": 0.2
+          "coef": 0.2781,
+          "share": 0.1208
         },
         {
           "id": "lower_mid",
           "label": "Lower-middle",
-          "coef": 0.09,
-          "share": 0.2
+          "coef": 0.0644,
+          "share": 0.2005
         },
         {
           "id": "middle",
           "label": "Middle",
-          "coef": 0,
-          "share": 0.2
+          "coef": 0.0,
+          "share": 0.2523
         },
         {
           "id": "upper_mid",
           "label": "Upper-middle",
-          "coef": -0.01,
-          "share": 0.2
+          "coef": -0.1296,
+          "share": 0.1886
         },
         {
           "id": "top20",
           "label": "Top fifth",
-          "coef": 0.025,
-          "share": 0.2
+          "coef": -0.0266,
+          "share": 0.2378
         }
       ]
     },
@@ -177,14 +177,14 @@
         {
           "id": "married",
           "label": "Married",
-          "coef": 0,
-          "share": 0.535
+          "coef": 0.0,
+          "share": 0.5284
         },
         {
           "id": "not_married",
           "label": "Not married",
-          "coef": 0.4375,
-          "share": 0.465
+          "coef": 0.3379,
+          "share": 0.4716
         }
       ]
     },
@@ -196,44 +196,44 @@
         {
           "id": "protestant",
           "label": "Protestant",
-          "coef": 0,
-          "share": 0.405
+          "coef": 0.0,
+          "share": 0.3959
         },
         {
           "id": "catholic",
           "label": "Catholic",
-          "coef": 0.175,
-          "share": 0.21
+          "coef": -0.0535,
+          "share": 0.1793
         },
         {
           "id": "jewish",
           "label": "Jewish",
-          "coef": 0.9125,
-          "share": 0.02
+          "coef": 0.9587,
+          "share": 0.0242
         },
         {
           "id": "muslim",
           "label": "Muslim",
-          "coef": 1.225,
-          "share": 0.01
+          "coef": 1.8602,
+          "share": 0.0021
         },
         {
           "id": "other",
           "label": "Something else",
-          "coef": 0.4125,
-          "share": 0.0775
+          "coef": 0.2325,
+          "share": 0.0913
         },
         {
           "id": "nothing",
           "label": "Nothing in particular",
-          "coef": 0.8125,
-          "share": 0.2
+          "coef": 0.5442,
+          "share": 0.1713
         },
         {
           "id": "none",
           "label": "Atheist or agnostic",
-          "coef": 1.2,
-          "share": 0.0775
+          "coef": 1.8689,
+          "share": 0.1359
         }
       ]
     },
@@ -245,14 +245,14 @@
         {
           "id": "no",
           "label": "No",
-          "coef": 0,
-          "share": 0.71
+          "coef": 0.0,
+          "share": 0.6526
         },
         {
           "id": "yes",
           "label": "Yes",
-          "coef": -0.925,
-          "share": 0.29
+          "coef": -1.347,
+          "share": 0.3474
         }
       ]
     },
@@ -264,20 +264,20 @@
         {
           "id": "never",
           "label": "Never in a union",
-          "coef": 0,
-          "share": 0.73
+          "coef": 0.0,
+          "share": 0.7742
         },
         {
           "id": "former",
           "label": "In a union before",
-          "coef": 0.1125,
-          "share": 0.145
+          "coef": 0.2489,
+          "share": 0.1416
         },
         {
           "id": "current",
           "label": "In a union now",
-          "coef": 0.325,
-          "share": 0.125
+          "coef": 0.3698,
+          "share": 0.0842
         }
       ]
     },
@@ -289,33 +289,36 @@
         {
           "id": "northeast",
           "label": "Northeast",
-          "coef": 0.3375,
-          "share": 0.175
+          "coef": 0.2192,
+          "share": 0.1874
         },
         {
           "id": "midwest",
           "label": "Midwest",
-          "coef": 0,
-          "share": 0.2125
+          "coef": 0.0,
+          "share": 0.2356
         },
         {
           "id": "south",
           "label": "South",
-          "coef": -0.2375,
-          "share": 0.385
+          "coef": -0.1851,
+          "share": 0.3773
         },
         {
           "id": "west",
           "label": "West",
-          "coef": 0.275,
-          "share": 0.2275
+          "coef": 0.1011,
+          "share": 0.1996
         }
       ]
     }
   ],
   "meta": {
-    "n": 61000,
-    "source": "PLACEHOLDER — not fitted. Replace via scripts/fit_models.R.",
-    "synthetic": true
+    "n": 31134,
+    "source": "CES Cumulative Common Content (doi:10.7910/DVN/II2DB6), fitted 2026-09-05",
+    "synthetic": false,
+    "raw_intercept": -1.232,
+    "raw_baseline": 0.5614,
+    "calibrated_to": 0.5224
   }
 }
