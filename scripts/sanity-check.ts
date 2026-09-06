@@ -1,7 +1,15 @@
 /**
  * Prints each cycle's model against reference points whose real values are
- * well known, so a silently wrong recode shows up as an implausible number
+ * roughly known, so a badly wrong model shows up as an implausible number
  * rather than as a plausible-looking app.
+ *
+ * Read the group columns carefully: each is "someone in this group who is
+ * AVERAGE on every other question", not "this group". A published crosstab
+ * reports the latter — an average over the group as it actually is, which
+ * differs on income, education, region and religion. The two legitimately
+ * differ, so the bands here are wider than the exit-poll figures. The
+ * unmodelled group shares that `fit_models.py` prints are the like-for-like
+ * comparison.
  *
  * The unit tests check internal consistency — shares summing to 1, reference
  * levels, the contribution identity. They cannot tell you the model is about
@@ -63,9 +71,12 @@ for (const m of MODELS) {
     // an online panel; a large gap means something else is wrong.
     warnings.push(`${m.year}: the survey alone put the average voter at ${(raw * 100).toFixed(1)}% D vs ${ACTUAL[m.year]}% actual — larger than panel skew explains; check weighting and the two-party filter.`);
   }
-  if (black < 80) warnings.push(`${m.year}: Black voters at ${black.toFixed(0)}% D looks low (expect ~85-95%) — check the race_h recode, DATA.md trap 2.`);
+  if (black < 78) warnings.push(`${m.year}: a Black voter average on everything else at ${black.toFixed(0)}% D looks low — check the race_h recode, DATA.md trap 2.`);
   if (evan > 35) warnings.push(`${m.year}: white evangelicals at ${evan.toFixed(0)}% D looks high (expect ~15-25%) — check reference levels for a sign error.`);
-  if (black > 97) warnings.push(`${m.year}: Black voters at ${black.toFixed(0)}% D is above anything measured (expect ~85-95%) — likely too few respondents in some cell.`);
+  // An additive log-odds model with no race x education interaction puts this
+  // conditional above the published marginal by construction; only an extreme
+  // value indicates a problem.
+  if (black > 99) warnings.push(`${m.year}: a Black voter average on everything else at ${black.toFixed(0)}% D is implausibly absolute — check for an empty cell.`);
 }
 
 const hispTrend = p({ race: 'hispanic' }, MODELS.at(-1)!) - p({ race: 'hispanic' }, MODELS[2]!);

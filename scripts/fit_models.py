@@ -418,6 +418,42 @@ def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
     }
 
 
+def observed_groups(d: pd.DataFrame) -> dict[str, tuple[float, int]]:
+    """Weighted two-party Democratic share for a few groups, straight from the
+    data — no model involved.
+
+    This is the number a published crosstab reports: an average over the group
+    as it actually is. `npm run check` cannot compute it, because from
+    coefficients alone the best it can do is "someone Black who is average on
+    every other question", and a group is not average on every other question.
+    The two figures differ for real reasons, so comparing the model's
+    conditional against a published marginal invites chasing a discrepancy that
+    is not an error.
+
+    Printed at fit time to validate the RECODES: if the Hispanic or born-again
+    mapping silently matched the wrong rows, it shows up here first.
+    """
+    def share(m: np.ndarray) -> tuple[float, int]:
+        sub = d[m]
+        if sub.empty:
+            return (float("nan"), 0)
+        w = sub["fitweight"].to_numpy(dtype=float)
+        return (float((sub["y"].to_numpy(dtype=float) * w).sum() / w.sum()), len(sub))
+
+    race = d["race"].to_numpy()
+    educ = d["educ"].to_numpy()
+    degree = np.isin(educ, ["four_year", "postgrad"])
+    return {
+        "Black": share(race == "black"),
+        "Hispanic": share(race == "hispanic"),
+        "White, degree": share((race == "white") & degree),
+        "White, no degree": share((race == "white") & ~degree),
+        "White evangelical": share((race == "white") & (d["bornagain"].to_numpy() == "yes")),
+        "Women": share(d["gender"].to_numpy() == "woman"),
+        "Under 30": share(d["age"].to_numpy() == "18_29"),
+    }
+
+
 def calibrate(model: dict) -> dict:
     """Shift a cycle's intercept so its average voter matches that election.
 
@@ -466,8 +502,11 @@ def main() -> None:
     avail = availability(df)
     report_availability(avail)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    observed: dict[int, dict[str, tuple[float, int]]] = {}
 
     for year in CYCLES:
+        d = df[(df["year"] == year) & df["y"].notna()].dropna(subset=avail[year])
+        observed[year] = observed_groups(d)
         model = fit_cycle(df, year, avail[year])
         if do_calibrate:
             model = calibrate(model)
@@ -479,6 +518,25 @@ def main() -> None:
         skew = (f"  survey {raw * 100:.1f}% D -> calibrated "
                 f"{TWO_PARTY_DEM[year] * 100:.1f}%") if raw is not None else ""
         print(f"{year}: n={model['meta']['n']} -> {path}{note}{skew}")
+
+    # Observed group shares, straight from the data. These validate the
+    # recodes; `npm run check` validates the engine. They measure different
+    # things - see observed_groups().
+    print("\nObserved two-party Democratic share by group (from the data, unmodelled):")
+    groups = list(next(iter(observed.values())).keys())
+    header = "  " + "group".ljust(20) + "".join(str(y).rjust(9) for y in CYCLES)
+    print(header)
+    print("  " + "-" * (len(header) - 2))
+    for g in groups:
+        cells = ""
+        for year in CYCLES:
+            value, count = observed[year][g]
+            cells += (f"{value * 100:.0f}%" if count else "--").rjust(9)
+        print("  " + g.ljust(20) + cells)
+    print("\n  Reference (Edison exit polls, two-party): Black ~90-96%,")
+    print("  Hispanic ~57-71% and falling since 2016, white evangelical ~16-24%,")
+    print("  white no degree ~30-37%. A group far outside its band means the")
+    print("  recode for it is wrong; run scripts/inspect-labels.py.")
 
     print("\ndone. run `npm test` then `npm run check`.")
 
