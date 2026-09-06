@@ -38,13 +38,16 @@ Harvard Dataverse applies a **CC0 1.0 public-domain waiver** by default to
 datasets, and CES is openly downloadable with no registration or access
 request. No restriction on private repos, public deployment, or commercial use.
 
-Two caveats:
+Dataverse lets depositors override that default with custom Terms of Use, so it
+had to be checked rather than assumed. **Checked on 2026-09-06: the dataset's
+Terms of Use field reads CC0 1.0**, the default waiver, with no additional
+conditions. Re-check if you pull a newer version of the file.
 
-- Dataverse lets depositors override CC0 with custom Terms of Use. Confirm that
-  field is empty on the dataset page before relying on this.
-- The [`kuriwaki/cces_cumulative`](https://github.com/kuriwaki/cces_cumulative)
-  build repository has **no license file**, so its code is all-rights-reserved
-  by default. Use the published data; do not copy its R harmonization code.
+One thing is *not* CC0: the
+[`kuriwaki/cces_cumulative`](https://github.com/kuriwaki/cces_cumulative) build
+repository has **no license file**, so its code is all-rights-reserved by
+default. The published data is free to use; do not copy its R harmonization
+code into this repo.
 
 CC0 waives the legal requirement to attribute, but
 [Dataverse Community Norms](https://dataverse.org/best-practices/dataverse-community-norms)

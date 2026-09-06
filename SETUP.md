@@ -48,9 +48,9 @@ Open the dataset page:
 Then:
 
 1. Click **Access Dataset** → **Download ZIP**. No account or access request is
-   needed. While you are there, glance at the **Terms of Use** field — it should
-   be the default CC0 waiver. If it is not, stop and tell me; the licensing
-   note in DATA.md assumes CC0.
+   needed. The **Terms of Use** field was verified as CC0 1.0 on 2026-09-06; if a
+   newer version of the file shows anything else, stop and re-read DATA.md
+   before using it.
 2. You want the **Stata (`.dta`)** file, named something like
    `cumulative_2006-2024.dta`. It is roughly 1 GB. If Dataverse offers you a
    `.tab` export instead, take the original `.dta` — the `.tab` conversion
