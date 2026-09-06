@@ -30,31 +30,32 @@ export const PRESETS: Preset[] = [
     answers: {
       gender: 'woman', age: '45_64', race: 'white', educ: 'hs',
       income: 'middle', marstat: 'married', religion: 'catholic',
-      bornagain: 'no', region: 'midwest',
+      bornagain: 'no', region: 'midwest', urbanicity: 'nonmetro',
     },
   },
   {
     id: 'union',
     label: 'Union household',
     look:
-      'Down about 15 points — and 2008 disappears, because the CES did not ' +
+      'Down about 13 points — and 2008 disappears, because the CES did not ' +
       'ask about union membership that year.',
     answers: {
       gender: 'man', age: '45_64', race: 'white', educ: 'hs',
       income: 'middle', marstat: 'married', religion: 'catholic',
       bornagain: 'no', union_hh: 'current', region: 'midwest',
+      urbanicity: 'small_metro',
     },
   },
   {
     id: 'hispanic-grad',
     label: 'Hispanic college graduate',
     look:
-      'Up 15 points through 2020, then down 19 in a single cycle — the ' +
+      'Up 18 points through 2020, then down 20 in a single cycle — the ' +
       'sharpest reversal any profile produces here.',
     answers: {
       gender: 'woman', age: '30_44', race: 'hispanic', educ: 'four_year',
       income: 'middle', marstat: 'married', religion: 'catholic',
-      bornagain: 'no', region: 'west',
+      bornagain: 'no', region: 'west', urbanicity: 'large_metro',
     },
   },
   {
@@ -66,7 +67,7 @@ export const PRESETS: Preset[] = [
     answers: {
       gender: 'man', age: '45_64', race: 'white', educ: 'postgrad',
       income: 'top20', marstat: 'married', religion: 'protestant',
-      bornagain: 'no', region: 'south',
+      bornagain: 'no', region: 'south', urbanicity: 'large_metro',
     },
   },
   {
@@ -79,7 +80,7 @@ export const PRESETS: Preset[] = [
     answers: {
       gender: 'woman', age: '30_44', race: 'black', educ: 'some_college',
       income: 'middle', marstat: 'not_married', religion: 'protestant',
-      bornagain: 'no', region: 'south',
+      bornagain: 'no', region: 'south', urbanicity: 'small_metro',
     },
   },
 ];

@@ -336,3 +336,29 @@ describe('nearestGroup', () => {
     }
   });
 });
+
+describe('nearestGroup ranking', () => {
+  const withGroups = MODELS.filter((m) => m.reference_groups?.length);
+
+  it.skipIf(withGroups.length === 0)(
+    'prefers a specific group over a large generic one',
+    () => {
+      // The bug this replaces: ranking ties by size descending made every
+      // woman resemble "Women", however distinctive her other answers.
+      for (const m of withGroups) {
+        const black = nearestGroup(m, { gender: 'woman', race: 'black' });
+        expect(black?.id).toBe('black');
+
+        const hispanic = nearestGroup(m, { gender: 'woman', race: 'hispanic' });
+        expect(hispanic?.id).toBe('hispanic');
+      }
+    },
+  );
+
+  it.skipIf(withGroups.length === 0)('still prefers more criteria over fewer', () => {
+    for (const m of withGroups) {
+      const g = nearestGroup(m, { race: 'white', educ: 'hs', gender: 'woman' });
+      expect(Object.keys(g!.criteria).length).toBeGreaterThan(1);
+    }
+  });
+});

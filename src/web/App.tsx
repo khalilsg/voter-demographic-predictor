@@ -284,12 +284,12 @@ export function App() {
 
           {!blocked && resembles && (
             <p className="resemble">
-              You are among <strong>{resembles.label}</strong>, who broke{' '}
-              <strong>{pct(resembles.dem)} Democratic</strong> in {year} —
-              measured directly, with no model involved.{' '}
-              <span className="dim">
-                {resembles.n.toLocaleString()} respondents.
-              </span>
+              <strong>A real number, for comparison.</strong>{' '}
+              <strong>{resembles.label}</strong> in {year}:{' '}
+              {pct(resembles.dem)} voted Democratic, among{' '}
+              {resembles.n.toLocaleString()} surveyed — measured directly,
+              with no model involved. The estimate above differs because it
+              also uses your other answers.
             </p>
           )}
 

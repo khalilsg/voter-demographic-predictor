@@ -242,10 +242,17 @@ export function nearestGroup(
       return answer !== undefined && levels.includes(answer);
     }),
   );
+  // Most criteria first, then the SMALLEST group. Size ascending is the whole
+  // point: among groups defined by equally many traits, the smaller one is the
+  // more specific description of this person. Ranking by size descending — the
+  // obvious-looking choice — makes a Black woman resemble "Women", because
+  // that group has five times the respondents and wins every tie. The fit
+  // already refuses to emit a group under 200 respondents, so smallest here
+  // cannot mean too thin to quote.
   return matches.sort(
     (a, b) =>
       Object.keys(b.criteria).length - Object.keys(a.criteria).length ||
-      b.n - a.n,
+      a.n - b.n,
   )[0];
 }
 
