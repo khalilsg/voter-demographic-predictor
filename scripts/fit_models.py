@@ -287,9 +287,26 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def fit_cycle(df: pd.DataFrame, year: int) -> dict:
-    d = df[(df["year"] == year) & df["y"].notna()].dropna(subset=list(FEATURES)).copy()
+    pool = df[(df["year"] == year) & df["y"].notna()]
+    d = pool.dropna(subset=list(FEATURES)).copy()
     if d.empty:
-        raise SystemExit(f"{year}: no usable rows - check the recodes against your file")
+        # A single recode that matches nothing empties the cycle, because a row
+        # missing any one feature is dropped. Say which one rather than leaving
+        # the reader to bisect ten mappings by hand.
+        lines = [f"{year}: no usable rows after dropping incomplete answers.", ""]
+        lines.append(f"  rows in cycle with a two-party vote: {len(pool):,}")
+        if len(pool):
+            lines.append("  missing per feature:")
+            for f in FEATURES:
+                miss = pool[f].isna().mean()
+                flag = "  <-- matches nothing" if miss > 0.99 else ""
+                lines.append(f"    {f:<12}{miss:>7.1%}{flag}")
+        lines += [
+            "",
+            "  The label text in your file differs from what the recodes expect.",
+            "  Run:  python3 scripts/inspect-labels.py <your file>",
+        ]
+        raise SystemExit("\n".join(lines))
 
     for f, levels in FEATURES.items():
         d[f] = pd.Categorical(d[f], categories=levels)
