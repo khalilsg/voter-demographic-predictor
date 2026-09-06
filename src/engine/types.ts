@@ -45,6 +45,17 @@ export interface CycleModel {
      * an election is the one output this project must never produce.
      */
     synthetic: boolean;
+    /**
+     * Set when the intercept was shifted so this cycle's average voter
+     * reproduces the real national result. The demographic coefficients are
+     * the fitted ones either way — only the level moves. See DESIGN.md
+     * section 6.
+     */
+    calibrated_to?: number;
+    /** The fitted intercept before calibration, kept for inspection. */
+    raw_intercept?: number;
+    /** What the survey alone put the average voter at, as a probability. */
+    raw_baseline?: number;
   };
 }
 

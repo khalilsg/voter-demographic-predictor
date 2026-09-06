@@ -46,12 +46,26 @@ for (const m of MODELS) {
     num(evan, 6) + '%    ' +
     num(hisp, 5) + '%   ' +
     row(m.meta.n.toLocaleString(), 9) +
-    (m.meta.synthetic ? 'NO — placeholder' : 'yes'),
+    (m.meta.synthetic ? 'NO — placeholder'
+      : m.meta.calibrated_to !== undefined
+        ? `yes (survey ${((m.meta.raw_baseline ?? 0) * 100).toFixed(1)}%)`
+        : 'yes'),
   );
 
-  if (Math.abs(drift) > 2) warnings.push(`${m.year}: average voter is ${drift.toFixed(1)} pts off the real result — check weighting and the two-party filter.`);
+  const raw = m.meta.raw_baseline;
+  if (raw === undefined) {
+    if (Math.abs(drift) > 2) {
+      warnings.push(`${m.year}: average voter is ${drift.toFixed(1)} pts off the real result — check weighting and the two-party filter.`);
+    }
+  } else if (Math.abs(raw * 100 - (ACTUAL[m.year] ?? 0)) > 8) {
+    // Post-calibration the headline matches by construction, so the diagnostic
+    // is the RAW survey figure. A few points of Democratic skew is normal for
+    // an online panel; a large gap means something else is wrong.
+    warnings.push(`${m.year}: the survey alone put the average voter at ${(raw * 100).toFixed(1)}% D vs ${ACTUAL[m.year]}% actual — larger than panel skew explains; check weighting and the two-party filter.`);
+  }
   if (black < 80) warnings.push(`${m.year}: Black voters at ${black.toFixed(0)}% D looks low (expect ~85-95%) — check the race_h recode, DATA.md trap 2.`);
   if (evan > 35) warnings.push(`${m.year}: white evangelicals at ${evan.toFixed(0)}% D looks high (expect ~15-25%) — check reference levels for a sign error.`);
+  if (black > 97) warnings.push(`${m.year}: Black voters at ${black.toFixed(0)}% D is above anything measured (expect ~85-95%) — likely too few respondents in some cell.`);
 }
 
 const hispTrend = p({ race: 'hispanic' }, MODELS.at(-1)!) - p({ race: 'hispanic' }, MODELS[2]!);

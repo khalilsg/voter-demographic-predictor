@@ -164,6 +164,6 @@ produce, so the flag travels with the file that carries the numbers.
 and flatten every demographic bar to invisible. Excluding it is the point, not
 an oversight.
 
-**`DESIGN.md` §6 is a live review list.** When you make a judgment call a
+**`DESIGN.md` §7 is a live review list.** When you make a judgment call a
 working version would judge better than reasoning can, add a row. When one gets
 resolved, strike it through with what actually happened rather than deleting it.

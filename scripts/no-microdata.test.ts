@@ -80,6 +80,7 @@ describe('no microdata in the repository', () => {
       'year', 'intercept', 'features', 'meta',
       'id', 'label', 'question', 'levels', 'coef', 'share',
       'n', 'source', 'synthetic',
+      'calibrated_to', 'raw_intercept', 'raw_baseline',
     ]);
     for (const f of tracked().filter((p) => p.startsWith('data/models/'))) {
       const keys = new Set<string>();

@@ -98,7 +98,37 @@ Choices that bias toward under-claiming:
 - The prose in the UI states the group-versus-individual limitation in the
   header, not in a footnote.
 
-## 6. Open questions
+## 6. The level comes from the election, the structure from the survey
+
+The CES overstates the Democratic share of the reported presidential vote.
+Online panels skew toward the winner, respondents misremember, and the sample
+is weighted to adults rather than to the people who actually voted. On the real
+file the fitted average voter lands 1.6 to 5.7 points more Democratic than the
+election did.
+
+Most of that would be harmless. The app displays contributions *relative* to
+each cycle's average voter, so a constant offset cancels out of everything the
+waterfall shows.
+
+The problem is that the skew is not constant. A 4-point spread across cycles
+enters the year-over-year line as movement, and no reader can distinguish it
+from realignment — which is the one thing this chart is supposed to show. It is
+the same confound as section 1, arriving by a different route.
+
+So each cycle's intercept is shifted to make its average voter reproduce that
+election's actual two-party result, and nothing else is touched. Every
+demographic coefficient is the fitted one. `meta.raw_intercept` and
+`meta.raw_baseline` preserve what the survey alone said, `npm run check`
+displays it beside the calibrated figure, and `--no-calibrate` turns the step
+off for anyone who wants the unadjusted fit.
+
+This is post-stratification to a known margin, not a thumb on the scale: the
+election result is a census of the quantity being estimated, and it is
+better evidence of the national level than any survey. What the survey is
+uniquely good at — how groups differ from each other — is exactly what is
+left alone.
+
+## 7. Open questions
 
 Live review list. When one is resolved, strike it through with what happened
 rather than deleting it.
@@ -112,3 +142,5 @@ rather than deleting it.
 | Turnout filter falls back to self-report | Vote validation did not run in every cycle, so the sample definition is not perfectly constant across years | Quantify the gap on cycles where both exist |
 | Union membership costs the 2008 cycle | Section 1: 2008 never asked it, and excluding the cycle beats scoring it on a different model | Whether the cumulative file's separate `union` (own membership) variable covers 2008, which would restore the cycle |
 | A cycle is excluded outright rather than shown with a wider band | Excluding is unambiguous; a band would need a defensible width and invites reading the point as comparable anyway | Revisit if more questions turn out to be partially available and the chart starts losing several cycles at once |
+| Calibration shifts only the intercept | Section 6: a uniform shift is the minimal correction that removes the differential skew without touching what the survey measures well | Whether raking the sample to known turnout margins by race and education would beat a single shift, which would also fix group-level skew |
+| Black Democratic share fits high (94-99% before calibration) | Two-party normalisation inflates an already lopsided group, and panel skew compounds it | Compare against the validated-voter subsample alone once turnout weights are in |

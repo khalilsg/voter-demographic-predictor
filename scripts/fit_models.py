@@ -31,12 +31,18 @@ import statsmodels.formula.api as smf
 
 CYCLES = [2008, 2012, 2016, 2020, 2024]
 
+# Actual national two-party Democratic share. Used to calibrate each cycle's
+# intercept — see calibrate() for why that is a correction rather than a fudge.
+TWO_PARTY_DEM = {
+    2008: 0.5366, 2012: 0.5198, 2016: 0.5111, 2020: 0.5224, 2024: 0.4923,
+}
+
 OUT_DIR = Path(__file__).resolve().parent.parent / "data" / "models"
 
 # Columns pulled from the file. Reading only these keeps a ~1 GB Stata file
 # inside a few hundred MB of RAM.
 COLUMNS = [
-    "year", "case_id", "weight", "voted_pres_party", "vv_turnout_gvm",
+    "year", "case_id", "weight", "weight_post", "voted_pres_party", "vv_turnout_gvm",
     "gender", "birthyr", "race_h", "educ", "faminc", "marstat", "religion",
     "relig_bornagain", "union_hh", "st",
 ]
@@ -300,6 +306,15 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     df["region"] = (st.str.upper().map(CENSUS_REGION)
                     .fillna(st.str.title().map(CENSUS_REGION_BY_NAME)).astype("string"))
 
+    # voted_pres_party comes from the POST-election wave, so it must be
+    # weighted with the post-election weight. `weight` is the pre-election
+    # weight and does not correct for differential post-wave attrition, which
+    # is not random. weight_post exists only for some even years, so fall back.
+    post = pd.to_numeric(df.get("weight_post"), errors="coerce") if "weight_post" in df else None
+    base = pd.to_numeric(df["weight"], errors="coerce")
+    df["fitweight"] = base if post is None else post.fillna(base)
+    df = df[df["fitweight"].notna() & (df["fitweight"] > 0)]
+
     # Validated voters where vote validation ran; self-report otherwise.
     # "No Record of Voting" and "No Voter File" are validated non-voters.
     if "vv_turnout_gvm" in df:
@@ -368,11 +383,11 @@ def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
     model = smf.glm(
         f"y ~ {terms}", data=d,
         family=__import__("statsmodels.api", fromlist=["families"]).families.Binomial(),
-        freq_weights=d["weight"].to_numpy(dtype=float),
+        freq_weights=d["fitweight"].to_numpy(dtype=float),
     ).fit()
     co = model.params
 
-    w = d["weight"].to_numpy(dtype=float)
+    w = d["fitweight"].to_numpy(dtype=float)
     out_features = []
     for f in features:
         lv = []
@@ -403,10 +418,46 @@ def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
     }
 
 
+def calibrate(model: dict) -> dict:
+    """Shift a cycle's intercept so its average voter matches that election.
+
+    The CES overstates the Democratic share of the reported presidential vote —
+    online panels skew toward the winner, and the sample is weighted to adults
+    rather than to actual voters. That much is expected and mostly harmless
+    here, because the app displays contributions RELATIVE to each cycle's
+    average voter.
+
+    What is not harmless is that the skew VARIES by cycle: on this file, +5.7
+    points in 2008 down to +1.6 in 2024. Left alone, that 4-point spread enters
+    the cross-cycle line as movement, and a reader cannot tell it from real
+    realignment — precisely the confound the whole project is built to avoid.
+
+    So the level comes from the election and the structure comes from the
+    survey. Only the intercept moves; every demographic coefficient is the
+    fitted one, untouched. The pre-calibration value is kept in meta so the
+    raw fit stays inspectable, and `npm run check` reports it.
+    """
+    mean_total = sum(
+        sum(l["share"] * l["coef"] for l in f["levels"]) for f in model["features"]
+    )
+    target = TWO_PARTY_DEM[model["year"]]
+    target_logit = np.log(target / (1 - target))
+
+    model["meta"]["raw_intercept"] = model["intercept"]
+    model["meta"]["raw_baseline"] = round(
+        float(1 / (1 + np.exp(-(model["intercept"] + mean_total)))), 4
+    )
+    model["meta"]["calibrated_to"] = target
+    model["intercept"] = round(float(target_logit - mean_total), 4)
+    return model
+
+
 def main() -> None:
-    if len(sys.argv) < 2:
+    argv = [a for a in sys.argv[1:] if a != "--no-calibrate"]
+    do_calibrate = "--no-calibrate" not in sys.argv
+    if not argv:
         raise SystemExit("usage: python3 scripts/fit_models.py <cumulative_ces.dta>")
-    src = Path(sys.argv[1])
+    src = Path(argv[0])
     if not src.exists():
         raise SystemExit(f"no such file: {src}")
 
@@ -418,11 +469,16 @@ def main() -> None:
 
     for year in CYCLES:
         model = fit_cycle(df, year, avail[year])
+        if do_calibrate:
+            model = calibrate(model)
         path = OUT_DIR / f"{year}.json"
         path.write_text(json.dumps(model, indent=2, ensure_ascii=False) + "\n")
         omitted = [f for f in FEATURES if f not in avail[year]]
         note = f"  (without {', '.join(omitted)})" if omitted else ""
-        print(f"{year}: n={model['meta']['n']} -> {path}{note}")
+        raw = model["meta"].get("raw_baseline")
+        skew = (f"  survey {raw * 100:.1f}% D -> calibrated "
+                f"{TWO_PARTY_DEM[year] * 100:.1f}%") if raw is not None else ""
+        print(f"{year}: n={model['meta']['n']} -> {path}{note}{skew}")
 
     print("\ndone. run `npm test` then `npm run check`.")
 
