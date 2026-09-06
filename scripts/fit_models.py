@@ -353,7 +353,29 @@ zero, and one that was asked sits far above 1%. The threshold only absorbs the
 handful of stray values a merge artifact can leave behind."""
 
 
-def rake_to_targets(d: pd.DataFrame, targets: dict[str, dict[str, float]]) -> pd.DataFrame:
+def two_party(entry: float | dict) -> float:
+    """A target as a two-party Democratic share, from either input form.
+
+    Accepts a bare fraction already normalised, or {"dem": 55, "rep": 42} as
+    read straight off an exit-poll table. The second form exists because doing
+    the division by hand for forty cells is a step that silently goes wrong,
+    and a target that is quietly 3 points off is worse than no target at all.
+    """
+    if isinstance(entry, dict):
+        dem, rep = float(entry["dem"]), float(entry["rep"])
+        if dem + rep <= 0:
+            raise SystemExit(f"target has no two-party votes: {entry}")
+        return dem / (dem + rep)
+    value = float(entry)
+    if not 0 < value < 1:
+        raise SystemExit(
+            f"target {value} is not a fraction between 0 and 1. Percentages go "
+            'in as {"dem": 55, "rep": 42}.'
+        )
+    return value
+
+
+def rake_to_targets(d: pd.DataFrame, targets: dict[str, dict]) -> pd.DataFrame:
     """Reweight one cycle so its within-group vote shares match known margins.
 
     Section 6 calibrates the national level to the election result, which is a
@@ -381,7 +403,13 @@ def rake_to_targets(d: pd.DataFrame, targets: dict[str, dict[str, float]]) -> pd
     for feature, levels in targets.items():
         if feature not in d.columns:
             continue
-        for level, target in levels.items():
+        for level, entry in levels.items():
+            if level not in FEATURES.get(feature, []):
+                raise SystemExit(
+                    f'unknown target "{feature}.{level}"; valid levels are '
+                    f"{FEATURES.get(feature, [])}"
+                )
+            target = two_party(entry)
             m = (d[feature] == level).to_numpy()
             if not m.any():
                 continue
@@ -655,7 +683,13 @@ def main() -> None:
     df = prepare(read_source(src))
     all_targets = json.loads(TARGETS_FILE.read_text()).get("targets", {})
     if all_targets:
-        print(f"  raking to known margins for: {', '.join(sorted(all_targets))}")
+        print("  raking to known margins:")
+        for cycle in sorted(all_targets):
+            for feature, levels in all_targets[cycle].items():
+                cells = ", ".join(
+                    f"{lv} {two_party(v) * 100:.1f}%" for lv, v in levels.items()
+                )
+                print(f"    {cycle} {feature}: {cells}")
     else:
         print("  no turnout targets set; skipping raking "
               f"(see {TARGETS_FILE.name})")
