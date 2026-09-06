@@ -80,6 +80,27 @@ export function Coefficients({ questions }: { questions: Question[] }) {
         </p>
       </header>
 
+      <div className="primer">
+        <p>
+          <strong>Divide by four.</strong> A coefficient is in log-odds; β ÷ 4
+          is roughly its effect in percentage points. So +0.63 is about 16
+          points, and −0.28 is about 7. The rule is near-exact in the middle
+          of the range and too generous near the ends, where there is less
+          room left to move — past about ±1, read e<sup>β</sup> as an odds
+          multiplier instead (+2.69 means roughly 15× the odds).
+        </p>
+        <p>
+          <strong>These are relative to each cycle's average voter</strong>, not
+          to a fixed benchmark, and that average voter moved: 53.7% Democratic
+          in 2008, 49.2% in 2024. So a row moving left to right is a group
+          moving <em>against the national tide</em>, not with it. High school
+          graduates go −0.15 → −0.43, about 7 points relative to everyone
+          else — but roughly 11 in absolute terms, once the 4.5-point
+          national shift is added back.{' '}
+          <a href="#/methodology">Full methodology →</a>
+        </p>
+      </div>
+
       <div className="viewpick">
         {VIEWS.map((v) => (
           <button

@@ -29,13 +29,19 @@ npm run typecheck   # BOTH tsconfigs — tsconfig.json and tsconfig.web.json
 npm run build
 ```
 
-## Two pages
+## Three pages
 
 **Predictor** — answer ten questions, see the five-cycle line.
+
 **Coefficients** (`#/coefficients`) — every number the model holds, as tables:
 each level's effect in log-odds relative to that cycle's average voter, its
 share of the electorate, and the raw regression output. Read a row left to
 right and you are looking at a group moving across sixteen years.
+
+**Methodology** (`#/methodology`) — what is computed, what it is fitted
+on, and where it is wrong, for a reader who has met a regression before.
+Its figures are read from the model files rather than typed in, so it
+cannot drift out of date after a refit.
 
 ## How it works
 

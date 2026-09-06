@@ -10,6 +10,7 @@ import {
 import type { Answers } from '../engine/types.js';
 import { Coefficients } from './components/Coefficients.js';
 import { CycleChart } from './components/CycleChart.js';
+import { Methodology } from './components/Methodology.js';
 import { Waterfall } from './components/Waterfall.js';
 import { CAVEATS, caveatFor } from './caveats.js';
 import { leanColor, leanLabel, pct } from './format.js';
@@ -75,15 +76,20 @@ export function App() {
       )}
 
       <nav className="nav">
-        <a href="#/" className={route === 'coefficients' ? '' : 'on'}>
+        <a href="#/" className={route === '' ? 'on' : ''}>
           Predictor
         </a>
         <a href="#/coefficients" className={route === 'coefficients' ? 'on' : ''}>
           Coefficients
         </a>
+        <a href="#/methodology" className={route === 'methodology' ? 'on' : ''}>
+          Methodology
+        </a>
       </nav>
 
-      {route === 'coefficients' ? (
+      {route === 'methodology' ? (
+        <Methodology />
+      ) : route === 'coefficients' ? (
         <Coefficients questions={QUESTIONS} />
       ) : (
         <>
