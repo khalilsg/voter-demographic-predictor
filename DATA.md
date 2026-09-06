@@ -99,6 +99,12 @@ later surveys and carry heavy recall bias toward the eventual winner. The
 outcome variable is **`voted_pres_party` within each presidential year**, which
 is that year's contemporaneous vote.
 
+**3b. Not every question exists in every cycle.** Union membership is absent
+from 2008 entirely. The fit gives each cycle the features it carries, and the
+app excludes a cycle from the comparison when the user answers something that
+cycle cannot score — see DESIGN.md section 1. `scripts/fit_models.py` reports
+what is missing where before it fits anything.
+
 **4. `gender` is binary; `gender4` exists only in recent cycles.** Cross-cycle
 comparability requires the binary item. This is a real limitation of the source
 data, not a modeling choice, and the UI should not pretend otherwise.

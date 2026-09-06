@@ -61,7 +61,11 @@ for year in CYCLES:
     religion = rng.choice(RELIGION, n, p=[0.36, 0.19, 0.02, 0.01, 0.01, 0.01,
                                           0.05, 0.04, 0.19, 0.07, 0.03, 0.02])
     born = rng.choice(YESNO, n, p=[0.30, 0.70])
-    union = rng.choice(UNION, n, p=[0.70, 0.13, 0.12, 0.05])
+    # Union membership is genuinely absent from the 2008 CES. The fixture
+    # reproduces that: a fit script that assumes every question exists in every
+    # cycle must fail here, not only against the real file.
+    union = (np.full(n, None, dtype=object) if year == 2008
+             else rng.choice(UNION, n, p=[0.70, 0.13, 0.12, 0.05]))
     st = rng.choice(STATES, n)
     birthyr = rng.integers(year - 85, year - 18, n)
 
@@ -74,7 +78,7 @@ for year in CYCLES:
         + 0.80 * (race == "Hispanic")
         + 0.50 * np.isin(educ, ["4-year", "Post-grad"]) * ((year - 2008) / 16)
         - 0.90 * (born == "Yes")
-        + 0.30 * (union == "Yes, Currently")
+        + 0.30 * (np.asarray(union) == "Yes, Currently")
         + 0.30 * ((year - birthyr) < 30)
     )
     y = rng.random(n) < 1 / (1 + np.exp(-lp))

@@ -3,10 +3,12 @@ import { MODELS, modelFor } from './models.js';
 import {
   baselineLogit,
   biggestFlips,
+  comparable,
   invLogit,
   logit,
   predict,
   predictAcrossCycles,
+  questions,
 } from './predict.js';
 import type { Answers, CycleModel } from './types.js';
 
@@ -47,14 +49,21 @@ describe('model files', () => {
     }
   });
 
-  it('shares the same specification across every cycle', () => {
-    // The comparability of the year-over-year view depends entirely on this:
-    // if the features or levels differ between cycles, the comparison is
-    // between two different models, not two different electorates.
-    const shape = (m: CycleModel) =>
-      m.features.map((f) => `${f.id}:${f.levels.map((l) => l.id).join(',')}`).join('|');
-    const first = shape(MODELS[0]!);
-    for (const m of MODELS) expect(shape(m)).toBe(first);
+  it('defines every shared feature identically across cycles', () => {
+    // Comparability of the year-over-year view depends on this. A cycle may
+    // omit a feature its survey never asked (see the availability tests
+    // below), but where two cycles both carry one, it must mean the same
+    // thing — same levels, same order — or the comparison is between two
+    // models rather than two electorates.
+    const shape = new Map<string, string>();
+    for (const m of MODELS) {
+      for (const f of m.features) {
+        const levels = f.levels.map((l) => l.id).join(',');
+        const seen = shape.get(f.id);
+        if (seen === undefined) shape.set(f.id, levels);
+        else expect(levels, `${f.id} differs in ${m.year}`).toBe(seen);
+      }
+    }
   });
 
   it('anchors the average voter to the real national result (fixture only)', () => {
@@ -131,6 +140,72 @@ describe('predict', () => {
     // Born-again is negative-signed in every cycle of the fixture.
     expect(predict(m, { bornagain: 'yes' }).p).toBeLessThan(base);
     expect(predict(m, { bornagain: 'no' }).p).toBeGreaterThan(base);
+  });
+});
+
+describe('per-cycle feature availability', () => {
+  // Not every question was asked in every wave — union membership is absent
+  // from the 2008 CES — so a cycle can legitimately carry fewer features.
+  const partial = questions(MODELS).filter((q) => q.missingFrom.length > 0);
+
+  it('exposes a question set spanning every cycle', () => {
+    const all = new Set(MODELS.flatMap((m) => m.features.map((f) => f.id)));
+    expect(questions(MODELS).map((q) => q.id).sort()).toEqual([...all].sort());
+  });
+
+  it('records which cycles each question is missing from', () => {
+    for (const q of questions(MODELS)) {
+      expect([...q.years, ...q.missingFrom].sort()).toEqual(ALL_CYCLES.slice().sort());
+      for (const year of q.years) {
+        expect(modelFor(year).features.some((f) => f.id === q.id)).toBe(true);
+      }
+      for (const year of q.missingFrom) {
+        expect(modelFor(year).features.some((f) => f.id === q.id)).toBe(false);
+      }
+    }
+  });
+
+  it('the fixture actually exercises a partially available question', () => {
+    // If this fails the fixture stopped reproducing the real data's shape, and
+    // every assertion below is passing vacuously.
+    expect(partial.length).toBeGreaterThan(0);
+  });
+
+  it('reports an answer a cycle cannot model instead of ignoring it', () => {
+    for (const q of partial) {
+      const answers: Answers = { [q.id]: q.levels[0]!.id };
+      for (const year of q.missingFrom) {
+        expect(predict(modelFor(year), answers).unsupported).toContain(q.id);
+      }
+      for (const year of q.years) {
+        expect(predict(modelFor(year), answers).unsupported).toEqual([]);
+      }
+    }
+  });
+
+  it('an unsupported answer does not silently move that cycle', () => {
+    // The danger is a number that looks comparable and is not: the answer
+    // vanishes, the cycle still renders, and nothing says why.
+    for (const q of partial) {
+      for (const year of q.missingFrom) {
+        const m = modelFor(year);
+        const before = predict(m, {}).p;
+        const after = predict(m, { [q.id]: q.levels[0]!.id }).p;
+        expect(after).toBeCloseTo(before, 12);
+      }
+    }
+  });
+
+  it('comparable() drops exactly the cycles that cannot score the answers', () => {
+    for (const q of partial) {
+      const rs = predictAcrossCycles(MODELS, { [q.id]: q.levels[0]!.id });
+      expect(comparable(rs).map((r) => r.year)).toEqual(q.years);
+    }
+  });
+
+  it('keeps every cycle when no partial question is answered', () => {
+    const rs = predictAcrossCycles(MODELS, { gender: 'woman', educ: 'postgrad' });
+    expect(comparable(rs)).toHaveLength(MODELS.length);
   });
 });
 

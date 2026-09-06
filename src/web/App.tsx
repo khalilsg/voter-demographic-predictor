@@ -1,12 +1,27 @@
 import { useMemo, useState } from 'react';
 import { MODELS, anySynthetic, modelFor } from '../engine/models.js';
-import { biggestFlips, predictAcrossCycles, predict } from '../engine/predict.js';
+import {
+  biggestFlips,
+  comparable,
+  predict,
+  predictAcrossCycles,
+  questions,
+} from '../engine/predict.js';
 import type { Answers } from '../engine/types.js';
 import { CycleChart } from './components/CycleChart.js';
 import { Waterfall } from './components/Waterfall.js';
 import { leanColor, leanLabel, pct } from './format.js';
 
 const LATEST = Math.max(...MODELS.map((m) => m.year));
+const QUESTIONS = questions(MODELS);
+
+const listYears = (years: number[]): string =>
+  years.length === 1
+    ? String(years[0])
+    : `${years.slice(0, -1).join(', ')} and ${years.at(-1)}`;
+
+/** "that year" / "those years", so the copy reads for one cycle or several. */
+const thatYear = (n: number): string => (n === 1 ? 'that year' : 'those years');
 
 export function App() {
   const [answers, setAnswers] = useState<Answers>({});
@@ -14,10 +29,16 @@ export function App() {
 
   const model = modelFor(year);
   const cycles = useMemo(() => predictAcrossCycles(MODELS, answers), [answers]);
+  const shown = useMemo(() => comparable(cycles), [cycles]);
+  const excluded = useMemo(
+    () => cycles.filter((r) => r.unsupported.length > 0),
+    [cycles],
+  );
   const current = useMemo(() => predict(model, answers), [model, answers]);
   const flips = useMemo(() => biggestFlips(model, answers, 3), [model, answers]);
 
-  const answered = model.features.filter((f) => answers[f.id]).length;
+  const answered = QUESTIONS.filter((q) => answers[q.id]).length;
+  const blocked = current.unsupported.length > 0;
 
   const set = (featureId: string, levelId: string) =>
     setAnswers((prev) => ({
@@ -47,9 +68,21 @@ export function App() {
 
       <main>
         <section className="questions" aria-label="Your demographics">
-          {model.features.map((f) => (
-            <fieldset key={f.id}>
+          {QUESTIONS.map((f) => (
+            <fieldset key={f.id} className={f.missingFrom.length ? 'partial' : undefined}>
               <legend>{f.label}</legend>
+              {f.missingFrom.length > 0 && (
+                <p className="avail">
+                  Not asked in {listYears(f.missingFrom)}
+                  {answers[f.id]
+                    ? ` — ${thatYear(f.missingFrom.length)} ${
+                        f.missingFrom.length === 1 ? 'is' : 'are'
+                      } left out below.`
+                    : `. Answering this leaves ${thatYear(
+                        f.missingFrom.length,
+                      )} out of the comparison.`}
+                </p>
+              )}
               <p className="q">{f.question}</p>
               <div className="opts">
                 {f.levels.map((l) => (
@@ -72,15 +105,33 @@ export function App() {
         </section>
 
         <section className="result" aria-live="polite">
-          <div className="dial" style={{ borderColor: leanColor(current.p) }}>
-            <div className="big" style={{ color: leanColor(current.p) }}>
-              {pct(current.p)}
+          {blocked ? (
+            <div className="dial blocked">
+              <div className="big muted">—</div>
+              <div className="lean">{year} can't be scored</div>
+              <div className="cap">
+                {current.unsupported
+                  .map((id) => QUESTIONS.find((q) => q.id === id)?.label ?? id)
+                  .join(' and ')}{' '}
+                wasn't asked that year, so this cycle would be answering a
+                different question from the others.
+              </div>
+              <button type="button" className="reset"
+                      onClick={() => setYear(LATEST)}>
+                Show {LATEST} instead
+              </button>
             </div>
-            <div className="lean">{leanLabel(current.p)}</div>
-            <div className="cap">
-              chance of voting Democratic in {year}, two-party
+          ) : (
+            <div className="dial" style={{ borderColor: leanColor(current.p) }}>
+              <div className="big" style={{ color: leanColor(current.p) }}>
+                {pct(current.p)}
+              </div>
+              <div className="lean">{leanLabel(current.p)}</div>
+              <div className="cap">
+                chance of voting Democratic in {year}, two-party
+              </div>
             </div>
-          </div>
+          )}
 
           <p className="note">
             {answered === 0 ? (
@@ -90,19 +141,30 @@ export function App() {
               </>
             ) : (
               <>
-                Based on {answered} of {model.features.length} questions, against{' '}
+                Based on {answered} of {QUESTIONS.length} questions, against{' '}
                 {model.meta.n.toLocaleString()} survey respondents.
               </>
             )}
           </p>
 
-          <h2>You, across five elections</h2>
-          <CycleChart predictions={cycles} selected={year} onSelect={setYear} />
+          <h2>
+            You, across {shown.length} election{shown.length === 1 ? '' : 's'}
+          </h2>
+          <CycleChart
+            predictions={shown}
+            excluded={excluded}
+            selected={year}
+            onSelect={setYear}
+          />
 
-          <h2>What moves you, in {year}</h2>
-          <Waterfall contributions={current.contributions} />
+          {!blocked && (
+            <>
+              <h2>What moves you, in {year}</h2>
+              <Waterfall contributions={current.contributions} />
+            </>
+          )}
 
-          {flips.length > 0 && (
+          {!blocked && flips.length > 0 && (
             <>
               <h2>Change one answer</h2>
               <ul className="flips">

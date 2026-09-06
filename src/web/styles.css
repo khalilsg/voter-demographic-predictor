@@ -140,3 +140,18 @@ footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
 
 footer p { margin: 0 0 8px; }
 .cite a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Questions not asked in every cycle */
+fieldset.partial { border-color: color-mix(in oklab, var(--warn-line) 55%, var(--line)); }
+.avail {
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: var(--warn-bg);
+  border-radius: 5px;
+  padding: 4px 7px;
+  margin: 0 0 8px;
+}
+.dial.blocked { border-color: var(--line); border-style: dashed; }
+.big.muted { color: var(--neutral); }
+.tick.muted { fill: var(--neutral); font-style: italic; }
+.pt.excluded { pointer-events: none; }

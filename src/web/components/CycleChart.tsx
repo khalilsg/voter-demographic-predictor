@@ -26,21 +26,37 @@ function domain(ps: number[]): [number, number] {
  */
 export function CycleChart({
   predictions,
+  excluded = [],
   selected,
   onSelect,
 }: {
   predictions: Prediction[];
+  /**
+   * Cycles that cannot score the current answers, because a question the user
+   * answered was not asked that year. Drawn as a gap on the axis rather than
+   * omitted silently — a year quietly disappearing from a five-point chart is
+   * more confusing than a marked absence.
+   */
+  excluded?: Prediction[];
   selected: number;
   onSelect: (year: number) => void;
 }) {
+  const allYears = [...predictions, ...excluded]
+    .map((r) => r.year)
+    .sort((a, b) => a - b);
   const [lo, hi] = domain(predictions.map((r) => r.p));
 
+  // Excluded cycles keep their slot on the axis, so the remaining points stay
+  // in their true chronological positions instead of sliding together.
+  const slot = (year: number) => allYears.indexOf(year);
   const x = (i: number) =>
-    PAD_X + (i * (W - PAD_X * 2)) / Math.max(1, predictions.length - 1);
+    PAD_X + (i * (W - PAD_X * 2)) / Math.max(1, allYears.length - 1);
   const y = (p: number) =>
     PAD_Y + (1 - (p - lo) / (hi - lo)) * (H - PAD_Y * 2);
 
-  const path = predictions.map((r, i) => `${i ? 'L' : 'M'}${x(i)},${y(r.p)}`).join(' ');
+  const path = predictions
+    .map((r, i) => `${i ? 'L' : 'M'}${x(slot(r.year))},${y(r.p)}`)
+    .join(' ');
   const mid = y(0.5);
   const plotW = W - PAD_X * 2;
 
@@ -58,17 +74,32 @@ export function CycleChart({
 
         <path d={path} fill="none" stroke="var(--ink-soft)" strokeWidth="2" />
 
-        {predictions.map((r, i) => {
+        {excluded.map((r) => (
+          <g key={r.year} className="pt excluded">
+            <line x1={x(slot(r.year))} x2={x(slot(r.year))} y1={PAD_Y} y2={H - PAD_Y}
+                  stroke="var(--line)" strokeDasharray="2 4" />
+            <text x={x(slot(r.year))} y={H - 6} textAnchor="middle" className="tick muted">
+              {r.year}
+            </text>
+            <text x={x(slot(r.year))} y={y((lo + hi) / 2)} textAnchor="middle"
+                  className="tick muted">
+              not asked
+            </text>
+          </g>
+        ))}
+
+        {predictions.map((r) => {
           // Keep the value label inside the plot when the point is near the top.
           const above = y(r.p) - PAD_Y > 16;
+          const cx = x(slot(r.year));
           return (
             <g key={r.year}
                onClick={() => onSelect(r.year)}
                className={r.year === selected ? 'pt selected' : 'pt'}>
-              <circle cx={x(i)} cy={y(r.p)} r={r.year === selected ? 7 : 5}
+              <circle cx={cx} cy={y(r.p)} r={r.year === selected ? 7 : 5}
                       fill={leanColor(r.p)} stroke="var(--bg)" strokeWidth="2" />
-              <text x={x(i)} y={H - 6} textAnchor="middle" className="tick">{r.year}</text>
-              <text x={x(i)} y={y(r.p) + (above ? -13 : 20)} textAnchor="middle"
+              <text x={cx} y={H - 6} textAnchor="middle" className="tick">{r.year}</text>
+              <text x={cx} y={y(r.p) + (above ? -13 : 20)} textAnchor="middle"
                     className="ptval">
                 {pct(r.p)}
               </text>
@@ -76,7 +107,18 @@ export function CycleChart({
           );
         })}
       </svg>
-      <figcaption>Click a cycle to break it down below.</figcaption>
+      <figcaption>
+        {excluded.length > 0 ? (
+          <>
+            {excluded.map((r) => r.year).join(' and ')}{' '}
+            {excluded.length === 1 ? 'is' : 'are'} left out: you answered a
+            question {excluded.length === 1 ? 'it' : 'they'} never asked, so{' '}
+            {excluded.length === 1 ? "it isn't" : "they aren't"} comparable.
+          </>
+        ) : (
+          'Click a cycle to break it down below.'
+        )}
+      </figcaption>
     </figure>
   );
 }

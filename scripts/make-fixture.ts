@@ -40,7 +40,19 @@ const TWO_PARTY_DEM: Record<number, number> = {
 /** [value in 2008, value in 2024]; intermediate cycles interpolate linearly. */
 type Drift = readonly [number, number];
 interface LevelSpec { id: string; label: string; coef: Drift; share: Drift }
-interface FeatureSpec { id: string; label: string; question: string; levels: LevelSpec[] }
+interface FeatureSpec {
+  id: string;
+  label: string;
+  question: string;
+  levels: LevelSpec[];
+  /**
+   * Cycles this question was asked in. Omitted means all of them. Union
+   * membership is genuinely absent from the 2008 CES, and the fixture
+   * reproduces that so the UI's handling of it is exercised rather than
+   * theoretical.
+   */
+  years?: number[];
+}
 
 const lerp = (d: Drift, year: number): number =>
   d[0] + (d[1] - d[0]) * ((year - 2008) / (2024 - 2008));
@@ -133,10 +145,11 @@ const SPEC: FeatureSpec[] = [
   {
     id: 'union_hh', label: 'Union household',
     question: 'Have you or anyone in your household ever belonged to a union?',
+    years: [2012, 2016, 2020, 2024],
     levels: [
-      { id: 'never',   label: 'Never',     coef: [0, 0],       share: [0.70, 0.74] },
-      { id: 'former',  label: 'Formerly',  coef: [0.15, 0.10], share: [0.16, 0.14] },
-      { id: 'current', label: 'Currently', coef: [0.40, 0.30], share: [0.14, 0.12] },
+      { id: 'never',   label: 'Never in a union', coef: [0, 0],       share: [0.70, 0.74] },
+      { id: 'former',  label: 'In a union before', coef: [0.15, 0.10], share: [0.16, 0.14] },
+      { id: 'current', label: 'In a union now', coef: [0.40, 0.30], share: [0.14, 0.12] },
     ],
   },
   {
@@ -154,7 +167,7 @@ const SPEC: FeatureSpec[] = [
 const round = (x: number, dp = 4): number => Number(x.toFixed(dp));
 
 function buildFeatures(year: number): Feature[] {
-  return SPEC.map((f) => {
+  return SPEC.filter((f) => !f.years || f.years.includes(year)).map((f) => {
     const raw = f.levels.map((l) => lerp(l.share, year));
     const total = raw.reduce((a, b) => a + b, 0);
     return {

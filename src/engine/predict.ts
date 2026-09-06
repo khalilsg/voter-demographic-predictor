@@ -4,6 +4,7 @@ import type {
   CycleModel,
   Feature,
   Prediction,
+  Question,
 } from './types.js';
 
 export const logit = (p: number): number => Math.log(p / (1 - p));
@@ -69,6 +70,13 @@ export function predict(model: CycleModel, answers: Answers): Prediction {
     });
   }
 
+  // Answers this cycle has no term for. Left unreported, they would simply
+  // vanish and the cycle would look comparable to ones that could use them.
+  const modeled = new Set(model.features.map((f) => f.id));
+  const unsupported = Object.keys(answers).filter(
+    (id) => answers[id] !== undefined && !modeled.has(id),
+  );
+
   return {
     year: model.year,
     p: invLogit(logitP),
@@ -76,7 +84,51 @@ export function predict(model: CycleModel, answers: Answers): Prediction {
     baselineLogit: baselineLogit(model),
     contributions,
     unanswered,
+    unsupported,
   };
+}
+
+/**
+ * The question set the UI shows: every feature any cycle carries, annotated
+ * with which cycles cannot score it.
+ *
+ * Ordered by the cycle that has the most features, so the questions appear in
+ * the order the specification defines rather than in discovery order.
+ */
+export function questions(models: CycleModel[]): Question[] {
+  const richest = [...models].sort(
+    (a, b) => b.features.length - a.features.length,
+  )[0];
+  if (!richest) return [];
+
+  const ids = new Set<string>();
+  const ordered: Feature[] = [];
+  for (const m of [richest, ...models]) {
+    for (const f of m.features) {
+      if (!ids.has(f.id)) {
+        ids.add(f.id);
+        ordered.push(f);
+      }
+    }
+  }
+
+  return ordered.map((f) => {
+    const years = models.filter((m) => m.features.some((x) => x.id === f.id))
+      .map((m) => m.year)
+      .sort((a, b) => a - b);
+    return {
+      ...f,
+      years,
+      missingFrom: models.map((m) => m.year)
+        .filter((y) => !years.includes(y))
+        .sort((a, b) => a - b),
+    };
+  });
+}
+
+/** Cycles that can score this answer set — the ones safe to compare. */
+export function comparable(predictions: Prediction[]): Prediction[] {
+  return predictions.filter((r) => r.unsupported.length === 0);
 }
 
 /** The same answers across every cycle — the realignment view. */

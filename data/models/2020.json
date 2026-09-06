@@ -263,19 +263,19 @@
       "levels": [
         {
           "id": "never",
-          "label": "Never",
+          "label": "Never in a union",
           "coef": 0,
           "share": 0.73
         },
         {
           "id": "former",
-          "label": "Formerly",
+          "label": "In a union before",
           "coef": 0.1125,
           "share": 0.145
         },
         {
           "id": "current",
-          "label": "Currently",
+          "label": "In a union now",
           "coef": 0.325,
           "share": 0.125
         }

@@ -190,7 +190,8 @@ LABELS <- list(
                muslim = "Muslim", other = "Something else",
                nothing = "Nothing in particular", none = "Atheist or agnostic"),
   bornagain = c(no = "No", yes = "Yes"),
-  union_hh = c(never = "Never", former = "Formerly", current = "Currently"),
+  union_hh = c(never = "Never in a union", former = "In a union before",
+               current = "In a union now"),
   region = c(northeast = "Northeast", midwest = "Midwest", south = "South", west = "West")
 )
 QUESTIONS <- c(

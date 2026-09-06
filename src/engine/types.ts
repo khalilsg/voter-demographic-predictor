@@ -73,4 +73,23 @@ export interface Prediction {
   contributions: Contribution[];
   /** Questions left unanswered, averaged over rather than guessed. */
   unanswered: string[];
+  /**
+   * Questions the user answered that THIS cycle cannot model, because the
+   * survey did not ask them that year. A cycle with any of these is not
+   * comparable to the others — it would be scored on a different model — so
+   * the UI excludes it rather than showing a number that looks comparable and
+   * is not. See DESIGN.md section 1.
+   */
+  unsupported: string[];
+}
+
+/**
+ * One question as the UI presents it: the union of every cycle's features,
+ * annotated with the cycles that cannot score it.
+ */
+export interface Question extends Feature {
+  /** Cycles whose model includes this feature. */
+  years: number[];
+  /** Cycles that never asked it. Empty for most questions. */
+  missingFrom: number[];
 }

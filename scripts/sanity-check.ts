@@ -59,6 +59,19 @@ if (hispTrend > -1) {
   warnings.push(`Hispanic Democratic share did not decline from 2016 to 2024 (${hispTrend.toFixed(1)} pts) — plausible only if the recode is collapsing categories.`);
 }
 
+const allFeatures = new Set(MODELS.flatMap((m) => m.features.map((f) => f.id)));
+for (const m of MODELS) {
+  const missing = [...allFeatures].filter(
+    (id) => !m.features.some((f) => f.id === id),
+  );
+  if (missing.length) {
+    console.log(
+      `${m.year} fitted without ${missing.join(', ')} — that cycle is excluded ` +
+      `from the comparison when the question is answered.`,
+    );
+  }
+}
+
 console.log();
 if (MODELS.some((m) => m.meta.synthetic)) {
   console.log('These are PLACEHOLDER coefficients. See SETUP.md to fit the real ones.');

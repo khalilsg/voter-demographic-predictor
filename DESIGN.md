@@ -3,17 +3,43 @@
 Why the code is shaped this way. `README.md` is what it is; `DATA.md` is where
 the numbers come from.
 
-## 1. One specification, five fits
+## 1. One specification — and what to do when a cycle cannot honour it
 
 The app's only real claim is the shape of the line across cycles. That claim
-holds only if the model is identical in every year — same features, same
-levels, same reference categories — so that a difference between 2008 and 2024
-is a difference in the electorate rather than in the method.
+holds only if the model is identical in every year, so that a difference
+between 2008 and 2024 is a difference in the electorate rather than in the
+method.
 
-This is load-bearing enough to be a test (`predict.test.ts`, "shares the same
-specification across every cycle"), and it is the reason `fit_models.R` builds
-every cycle from one `FEATURES` list and one formula. Adding a term for a
-single cycle silently converts the headline feature into nonsense.
+The CES does not fully cooperate. Union membership was not asked in 2008. That
+leaves three options, and only one of them is honest:
+
+1. **Drop the feature everywhere.** Costs every cycle a real predictor to
+   satisfy the weakest one.
+2. **Fit 2008 without it and show all five points.** This is the tempting
+   option and the wrong one. The 2008 point would come from a nine-term model
+   sitting in a chart of ten-term models, and the gap between it and the others
+   would be partly the electorate and partly the missing term — with no way for
+   a reader to tell which. Precisely the confound this section exists to
+   prevent.
+3. **Fit each cycle on what it has, and exclude a cycle from the comparison
+   when the user answers something it cannot score.**
+
+We do (3). Each cycle's model file contains only the features that cycle
+carries; `questions()` returns the union for the UI; `predict()` reports any
+answer the cycle has no term for as `unsupported`; `comparable()` drops those
+cycles. The user sees the question marked *"Not asked in 2008"* before they
+answer and the year drawn as a labelled gap after — never a number that looks
+comparable and is not.
+
+The invariant is therefore not "every cycle has the same features" but the
+sharper: **where two cycles both carry a feature, it is defined identically**,
+and **a cycle is only ever compared against cycles scoring the same answers.**
+Both are tested.
+
+The cost is real — answer the union question and you lose the 2008 baseline,
+which is a genuinely useful anchor for the realignment story. Making that cost
+visible, and the user's choice, is better than hiding it in a footnote or
+silently absorbing it into a coefficient.
 
 ## 2. Microdata, not published crosstabs
 
@@ -84,3 +110,5 @@ rather than deleting it.
 | Nominal→quintile income recode is rank-based within year | Simple and inflation-proof, but assumes the bracket ordering is comparable across cycles even where bracket boundaries moved | Compare against a CPI-deflated recode on the real data |
 | Region derived from state, not urbanicity | Urban/suburban/rural is a stronger predictor than census region and CES has `zipcode`/`county_fips` to derive it | Whether adding a density measure is worth the county-level join |
 | Turnout filter falls back to self-report | Vote validation did not run in every cycle, so the sample definition is not perfectly constant across years | Quantify the gap on cycles where both exist |
+| Union membership costs the 2008 cycle | Section 1: 2008 never asked it, and excluding the cycle beats scoring it on a different model | Whether the cumulative file's separate `union` (own membership) variable covers 2008, which would restore the cycle |
+| A cycle is excluded outright rather than shown with a wider band | Excluding is unambiguous; a band would need a defensible width and invites reading the point as comparable anyway | Revisit if more questions turn out to be partially available and the chart starts losing several cycles at once |

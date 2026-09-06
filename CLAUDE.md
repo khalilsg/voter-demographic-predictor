@@ -141,10 +141,15 @@ Config traps, already paid for elsewhere, do not reintroduce:
 
 Read `DESIGN.md` before changing engine behavior. The short version:
 
-**One specification, five fits.** The app's only real claim is the shape of the
-line across cycles, and that holds only if the model is identical in every
-year. Adding a term for one cycle converts the headline feature into nonsense.
-A test asserts the specification matches across all five.
+**One specification, five fits — with a documented exception.** The app's only
+real claim is the shape of the line across cycles, and that holds only if the
+model is identical in every year. But the CES did not ask everything in every
+wave (union membership is absent from 2008), so the rule is sharper than
+"identical": where two cycles both carry a feature it must be defined
+identically, and a cycle is only ever compared against cycles scoring the same
+answers. Cycles that cannot score an answer are excluded from the chart and
+marked, never shown alongside cycles that can. Both halves are tested; read
+DESIGN.md section 1 before touching this.
 
 **Contributions are centered on the electorate, not the reference level.** So
 `logitP === baselineLogit + sum(contributions)` exactly, and the waterfall bars

@@ -98,7 +98,8 @@ LABELS = {
                  "muslim": "Muslim", "other": "Something else",
                  "nothing": "Nothing in particular", "none": "Atheist or agnostic"},
     "bornagain": {"no": "No", "yes": "Yes"},
-    "union_hh": {"never": "Never", "former": "Formerly", "current": "Currently"},
+    "union_hh": {"never": "Never in a union", "former": "In a union before",
+                 "current": "In a union now"},
     "region": {"northeast": "Northeast", "midwest": "Midwest", "south": "South",
                "west": "West"},
 }
@@ -308,33 +309,61 @@ def prepare(raw: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def fit_cycle(df: pd.DataFrame, year: int) -> dict:
+MIN_COVERAGE = 0.01
+"""A feature answered by less than this share of a cycle is treated as absent
+from it. Not a tuning knob: a question the cycle never asked sits at exactly
+zero, and one that was asked sits far above 1%. The threshold only absorbs the
+handful of stray values a merge artifact can leave behind."""
+
+
+def availability(df: pd.DataFrame) -> dict[int, list[str]]:
+    """Which features each cycle can actually be fitted on.
+
+    Not every question was asked in every wave — union membership is absent
+    from 2008 — and the honest response is neither to drop the feature for all
+    cycles nor to score a cycle on a model missing a term. Each cycle is fitted
+    on what it carries, and a cycle that cannot represent an answer the user
+    gave is later excluded from the comparison rather than shown alongside
+    cycles that can. See DESIGN.md section 1.
+    """
+    out: dict[int, list[str]] = {}
+    for year in CYCLES:
+        pool = df[(df["year"] == year) & df["y"].notna()]
+        out[year] = [f for f in FEATURES if len(pool) and pool[f].notna().mean() > MIN_COVERAGE]
+    return out
+
+
+def report_availability(avail: dict[int, list[str]]) -> None:
+    """Say up front what is missing where, rather than one cycle at a time."""
+    absent = {f: [y for y in CYCLES if f not in avail[y]] for f in FEATURES}
+    absent = {f: years for f, years in absent.items() if years}
+    if not absent:
+        return
+    print("\n  Features not available in every cycle:")
+    for f, years in absent.items():
+        print(f"    {f:<12} absent from {', '.join(str(y) for y in years)}")
+    print("  Those cycles are fitted without it, and the app will exclude them")
+    print("  from the comparison when that question is answered.\n")
+
+
+def fit_cycle(df: pd.DataFrame, year: int, features: list[str]) -> dict:
     pool = df[(df["year"] == year) & df["y"].notna()]
-    d = pool.dropna(subset=list(FEATURES)).copy()
+    d = pool.dropna(subset=features).copy()
     if d.empty:
-        # A single recode that matches nothing empties the cycle, because a row
-        # missing any one feature is dropped. Say which one rather than leaving
-        # the reader to bisect ten mappings by hand.
         lines = [f"{year}: no usable rows after dropping incomplete answers.", ""]
         lines.append(f"  rows in cycle with a two-party vote: {len(pool):,}")
         if len(pool):
             lines.append("  missing per feature:")
-            for f in FEATURES:
-                miss = pool[f].isna().mean()
-                flag = "  <-- matches nothing" if miss > 0.99 else ""
-                lines.append(f"    {f:<12}{miss:>7.1%}{flag}")
-        lines += [
-            "",
-            "  The label text in your file differs from what the recodes expect.",
-            "  Run:  python3 scripts/inspect-labels.py <your file>",
-        ]
+            for f in features:
+                lines.append(f"    {f:<12}{pool[f].isna().mean():>7.1%}")
+        lines += ["", "  Run:  python3 scripts/inspect-labels.py <your file>"]
         raise SystemExit("\n".join(lines))
 
-    for f, levels in FEATURES.items():
-        d[f] = pd.Categorical(d[f], categories=levels)
+    for f in features:
+        d[f] = pd.Categorical(d[f], categories=FEATURES[f])
 
     terms = " + ".join(
-        f'C({f}, Treatment(reference="{REFERENCE[f]}"))' for f in FEATURES
+        f'C({f}, Treatment(reference="{REFERENCE[f]}"))' for f in features
     )
     model = smf.glm(
         f"y ~ {terms}", data=d,
@@ -344,10 +373,10 @@ def fit_cycle(df: pd.DataFrame, year: int) -> dict:
     co = model.params
 
     w = d["weight"].to_numpy(dtype=float)
-    features = []
-    for f, levels in FEATURES.items():
+    out_features = []
+    for f in features:
         lv = []
-        for level in levels:
+        for level in FEATURES[f]:
             term = f'C({f}, Treatment(reference="{REFERENCE[f]}"))[T.{level}]'
             coef = 0.0 if level == REFERENCE[f] else float(co.get(term, 0.0))
             share = float(w[(d[f] == level).to_numpy()].sum() / w.sum())
@@ -357,14 +386,14 @@ def fit_cycle(df: pd.DataFrame, year: int) -> dict:
                 "coef": round(coef, 4),
                 "share": round(share, 4),
             })
-        features.append({
+        out_features.append({
             "id": f, "label": FEATURE_LABELS[f], "question": QUESTIONS[f], "levels": lv,
         })
 
     return {
         "year": year,
         "intercept": round(float(co["Intercept"]), 4),
-        "features": features,
+        "features": out_features,
         "meta": {
             "n": int(len(d)),
             "source": "CES Cumulative Common Content (doi:10.7910/DVN/II2DB6), "
@@ -383,13 +412,17 @@ def main() -> None:
 
     print(f"reading {src}")
     df = prepare(read_source(src))
+    avail = availability(df)
+    report_availability(avail)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     for year in CYCLES:
-        model = fit_cycle(df, year)
+        model = fit_cycle(df, year, avail[year])
         path = OUT_DIR / f"{year}.json"
         path.write_text(json.dumps(model, indent=2, ensure_ascii=False) + "\n")
-        print(f"{year}: n={model['meta']['n']} -> {path}")
+        omitted = [f for f in FEATURES if f not in avail[year]]
+        note = f"  (without {', '.join(omitted)})" if omitted else ""
+        print(f"{year}: n={model['meta']['n']} -> {path}{note}")
 
     print("\ndone. run `npm test` then `npm run check`.")
 
