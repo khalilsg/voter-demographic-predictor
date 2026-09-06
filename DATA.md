@@ -108,6 +108,8 @@ Rscript scripts/fit_models.R data/raw/cumulative_ces.dta
 npm test    # asserts share sums, reference levels, cross-cycle spec identity
 ```
 
+See [SETUP.md](SETUP.md) for step-by-step instructions.
+
 Until that runs, `data/models/*.json` holds placeholder coefficients from
 `npm run fixture`, every file carries `meta.synthetic: true`, and the UI shows
 a banner saying so.

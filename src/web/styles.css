@@ -137,3 +137,6 @@ legend { font-weight: 600; font-size: 13px; padding: 0 6px; }
 
 footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line);
          color: var(--ink-soft); font-size: 12px; max-width: 70ch; }
+
+footer p { margin: 0 0 8px; }
+.cite a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.web.json --noEmit",
-    "fixture": "tsx scripts/make-fixture.ts"
+    "fixture": "tsx scripts/make-fixture.ts",
+    "check": "tsx scripts/sanity-check.ts"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -2,15 +2,33 @@ node_modules/
 dist/
 .DS_Store
 *.local
+*.tsbuildinfo
 
-# CES microdata is NEVER committed, including to a private repo.
-# It carries zipcode + birth year + gender + voter-file matches, which are
-# re-identifying in combination. Only fitted coefficients (data/models/*.json)
-# are tracked. See DATA.md.
+# ---------------------------------------------------------------------------
+# Survey microdata is NEVER committed, including to a private repo. CES carries
+# zipcode, county FIPS, birth year, state, and voter-file-matched validation
+# fields; zip + birth year + sex is the textbook re-identification triple.
+#
+# Deny by default on every format the data plausibly arrives in, anywhere in
+# the tree — not just under data/raw/. Dataverse hands you `dataverse_files.zip`
+# and exports `.tab`, so those are the likely names, not edge cases.
+#
+# Only data/models/*.json is tracked: fitted coefficients over tens of
+# thousands of respondents, from which nothing individual survives.
+# scripts/check-no-microdata.mjs enforces this; `npm test` runs it.
+# ---------------------------------------------------------------------------
 data/raw/
 *.dta
 *.sav
-*.csv.gz
-
-# tsc -b build info
-*.tsbuildinfo
+*.por
+*.rds
+*.RData
+*.rdata
+*.tab
+*.csv
+*.tsv
+*.zip
+*.gz
+*.7z
+*.parquet
+*.feather

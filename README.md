@@ -54,3 +54,7 @@ excluded from the specification: it would predict nearly everything and bury
 the demographics the app exists to show.
 
 It is a party trick with real data behind it. Treat it as one.
+
+## Fitting the real models
+
+See **[SETUP.md](SETUP.md)** — download, fit, sanity-check, commit.

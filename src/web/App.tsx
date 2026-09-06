@@ -125,9 +125,23 @@ export function App() {
 
       <footer>
         <p>
-          Data: Cooperative Election Study cumulative common content. Party
-          identification is deliberately excluded — it would predict almost
-          everything and hide the demographics this is about.
+          Party identification is deliberately excluded from the model — it
+          would predict almost everything and hide the demographics this is
+          about.
+        </p>
+        <p className="cite">
+          Data:{' '}
+          <a href="https://doi.org/10.7910/DVN/II2DB6">
+            Cumulative CES Common Content
+          </a>
+          , Kuriwaki, Shiro, Harvard Dataverse — a harmonization of the{' '}
+          <a href="https://cces.gov.harvard.edu/">
+            Cooperative Election Study
+          </a>{' '}
+          common content (Schaffner, Ansolabehere, Pope and Shih), released
+          under a CC0 1.0 public-domain waiver. Neither the CES nor its
+          principal investigators endorse or are responsible for anything
+          shown here.
         </p>
       </footer>
     </div>
