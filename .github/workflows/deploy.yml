@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+# The site is a static build of committed coefficient files, so a push to main
+# is all it takes. No data is fetched at build time and none at runtime.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it; skip superseded queued
+# ones.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The site is only worth publishing if the engine is sound and no
+      # microdata slipped into the repo, so both gate the deploy.
+      - run: npm test
+      - run: npm run typecheck
+
+      - name: Fail if the models are still placeholders
+        run: |
+          if grep -l '"synthetic": true' data/models/*.json > /dev/null 2>&1; then
+            echo "::error::data/models still holds placeholder coefficients."
+            echo "Run scripts/fit_models.py and commit the result before deploying."
+            exit 1
+          fi
+
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

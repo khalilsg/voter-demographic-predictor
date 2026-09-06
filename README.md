@@ -10,11 +10,10 @@ is the electorate moving, not the method. A white voter with a postgraduate
 degree is a different political animal in 2024 than in 2008, and this shows it
 about you specifically.
 
-> **Status: placeholder data.** `data/models/*.json` currently holds invented
-> coefficients so the interface can be built and reviewed. They are
-> directionally plausible and substantively meaningless. Run
-> `scripts/fit_models.R` to replace them with a real fit. Until then the app
-> shows a banner saying so.
+Fitted on 127,578 CES respondents across the five cycles. `npm run check`
+validates each fit against reference points whose real values are known; see
+[SETUP.md](SETUP.md) to refit, and DESIGN.md section 7 for what the source data
+gets wrong (chiefly the under-30 trend in 2024).
 
 ## Quick start
 
@@ -58,3 +57,19 @@ It is a party trick with real data behind it. Treat it as one.
 ## Fitting the real models
 
 See **[SETUP.md](SETUP.md)** — download, fit, sanity-check, commit.
+
+## Deploying
+
+Pushing to `main` builds and publishes to GitHub Pages via
+`.github/workflows/deploy.yml`. The deploy is gated on `npm test` and
+`npm run typecheck`, and refuses to publish while `data/models/` still holds
+placeholder coefficients.
+
+**GitHub Pages requires a public repository** on free accounts. This repo is
+private; either make it public in Settings, or use a plan that allows Pages on
+private repos. Nothing sensitive is published either way — the site is static
+and the tracked model files are aggregate coefficients, never microdata (see
+[DATA.md](DATA.md)).
+
+One-time setup, after the first push: **Settings → Pages → Source →
+GitHub Actions**.
